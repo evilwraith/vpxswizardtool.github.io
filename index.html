@@ -128,6 +128,13 @@
                 <input type="text" name="coloredROMVPSId" readonly class="vpsid" maxlength="15" placeholder="Color ROM ID">
                 <input tabindex="29" type="text" name="coloredROMChecksum" class="checksum" maxlength="250" placeholder="Color ROM Checksum" autocomplete="off">
               </div>
+              <div class="palvniRow">
+                <label class="palvniLabel">
+                  <input tabindex="35" type="checkbox" class="palvni-toggle" id="palVniToggle" onchange="const row=this.closest('.palvniRow');if(row)row.classList.toggle('active',this.checked);const f=document.querySelector('input[name=\'coloredROMChecksum2\']');f.disabled=!this.checked;if(!this.checked)f.value='';">
+                  <span>PAL/VNI</span>
+                </label>
+                <input tabindex="36" type="text" name="coloredROMChecksum2" class="vertoverride colorrom-checksum2" maxlength="250" placeholder="Color ROM Checksum 2" autocomplete="off" disabled>
+              </div>
               <div>
                 <textarea tabindex="30" name="coloredROMNotes" class="vertTA" maxlength="250" placeholder="Color ROM Notes"></textarea>
               </div>
@@ -142,6 +149,29 @@
                   <input tabindex="33" type="checkbox" name="coloredROMVersionOverride_check"><span></span>
                 </label>
                 <input tabindex="34" type="text" name="coloredROMVersionOverride" class="vertoverride" maxlength="250" placeholder="Override Color ROM Version" autocomplete="off">
+              </div>
+            </div>
+          </fieldset>
+          <fieldset class="cRomMainGrid"><legend align="right">VPU Patch</legend>
+            <div class="cRomGrid">
+              <div class="bottomTopRow">
+                <input type="text" name="diffVPSID" readonly class="vpsid" maxlength="15" placeholder="VPU Patch ID">
+                <input tabindex="42" type="text" name="diffChecksum" class="checksum" maxlength="250" placeholder="VPU Patch Checksum" autocomplete="off">
+              </div>
+              <div>
+                <textarea tabindex="43" name="diffNotes" class="vertTA" maxlength="250" placeholder="VPU Patch Notes"></textarea>
+              </div>
+              <div class="lowerOverrideRow">
+                <label class="overrideCheckboxLabels">
+                  <input tabindex="44" type="checkbox" name="diffUrlOverride_check"><span></span>
+                </label>
+                <input tabindex="45" type="text" name="diffUrlOverride" class="vertoverride" maxlength="250" placeholder="Override VPU Patch URL" autocomplete="off">
+              </div>
+              <div class="lowerOverrideRow">
+                <label class="overrideCheckboxLabels">
+                  <input tabindex="46" type="checkbox" name="diffVersionOverride_check"><span></span>
+                </label>
+                <input tabindex="47" type="text" name="diffVersionOverride" class="vertoverride" maxlength="250" placeholder="Override VPU Patch Version" autocomplete="off">
               </div>
             </div>
           </fieldset>
