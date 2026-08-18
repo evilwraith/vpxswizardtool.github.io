@@ -117,20 +117,26 @@
     });
   }
 
+  // Guards only the #builderSection element's own scrollIntoView, instead of
+  // patching Element.prototype for the entire page. Any call site (main.js,
+  // v090Enhancements.js, ymlImport.js) that scrolls builderSection into view
+  // is still suppressed while an import is loading; every other element on
+  // the page is completely unaffected.
   function preventImportAutoScroll() {
-    const originalScrollIntoView = Element.prototype.scrollIntoView;
-    if (originalScrollIntoView.__v0102Wrapped) return;
+    const builderSection = document.getElementById('builderSection');
+    if (!builderSection || builderSection.__v0102ScrollGuarded) return;
 
-    function wrappedScrollIntoView(...args) {
+    const originalScrollIntoView = builderSection.scrollIntoView.bind(builderSection);
+
+    builderSection.scrollIntoView = (...args) => {
       const importControl = document.getElementById('ymlImportDrop');
       const isImporting = importControl?.classList.contains('is-loading') === true;
 
-      if (isImporting && this.id === 'builderSection') return;
-      return originalScrollIntoView.apply(this, args);
-    }
+      if (isImporting) return undefined;
+      return originalScrollIntoView(...args);
+    };
 
-    wrappedScrollIntoView.__v0102Wrapped = true;
-    Element.prototype.scrollIntoView = wrappedScrollIntoView;
+    builderSection.__v0102ScrollGuarded = true;
   }
 
   function observeStatusSources() {

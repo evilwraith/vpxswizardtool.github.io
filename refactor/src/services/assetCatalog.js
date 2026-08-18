@@ -47,12 +47,36 @@
     return [...unique.values()];
   }
 
+  const ITEM_UPDATED_KEYS = ['updatedAt', 'modifiedAt', 'lastUpdated', 'updated', 'createdAt'];
+
+  function itemUpdatedTimestamp(item) {
+    if (!item || typeof item !== 'object') return 0;
+    for (const key of ITEM_UPDATED_KEYS) {
+      const raw = item[key];
+      if (raw === undefined || raw === null || raw === '') continue;
+      if (typeof raw === 'number' && Number.isFinite(raw)) {
+        return raw < 100000000000 ? raw * 1000 : raw;
+      }
+      const parsed = Date.parse(String(raw));
+      if (Number.isFinite(parsed)) return parsed;
+    }
+    return 0;
+  }
+
+  function sortByUpdatedDesc(items) {
+    if (!Array.isArray(items) || items.length < 2) return Array.isArray(items) ? items.slice() : [];
+    return items
+      .map((item, index) => ({ item, index, timestamp: itemUpdatedTimestamp(item) }))
+      .sort((left, right) => right.timestamp - left.timestamp || left.index - right.index)
+      .map(entry => entry.item);
+  }
+
   function getCategoryItems(record, category, config = {}, context = {}) {
     if (!record) return [];
 
     if (category === 'tableFiles') {
       const tableFiles = Array.isArray(record.tableFiles) ? record.tableFiles : [];
-      return tableFiles.filter(item => !isExcludedVpxFormat(item) && !isVpuPatchItem(item));
+      return sortByUpdatedDesc(tableFiles.filter(item => !isExcludedVpxFormat(item) && !isVpuPatchItem(item)));
     }
 
     if (category === 'vpuPatchFiles') {
@@ -63,17 +87,17 @@
       const inferred = (Array.isArray(record.tableFiles) ? record.tableFiles : []).filter(isVpuPatchItem);
       const selectedVpxId = String(context?.selections?.tableFiles ?? context?.selectedVpxId ?? '').trim();
 
-      return uniqueItems([...direct, ...inferred]).filter(item => {
+      return sortByUpdatedDesc(uniqueItems([...direct, ...inferred]).filter(item => {
         const parentId = getParentId(item);
         return !parentId || (selectedVpxId && parentId === selectedVpxId);
-      });
+      }));
     }
 
     const sourceFields = Array.isArray(config.sourceFields) && config.sourceFields.length
       ? config.sourceFields
       : [category];
     for (const field of sourceFields) {
-      if (Array.isArray(record?.[field])) return record[field];
+      if (Array.isArray(record?.[field])) return sortByUpdatedDesc(record[field]);
     }
     return [];
   }

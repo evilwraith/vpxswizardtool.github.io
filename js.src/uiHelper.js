@@ -6,10 +6,12 @@
     getCoverUrl,
     getItemLabel,
     isItemBroken,
+    getItemUrl,
     getCategoryItems,
     getAssetState,
     extractArchiveDirectories,
-    listArchiveEntryPaths
+    listArchiveEntryPaths,
+    replacePrimaryChecksum
   } = window.VPS_UTILS;
   const { CATEGORY_CONFIG } = window.VPS_YML_FIELDS;
 
@@ -167,7 +169,7 @@
       if (typeof Worker === 'undefined' || typeof blob?.stream !== 'function') {
         // Fallback: slurp whole file (only works for files under ~2 GB in Chrome).
         blob.arrayBuffer()
-          .then(buffer => resolve(md5ArrayBuffer(buffer)))
+          .then(buffer => resolve(md5ArrayBuffer(buffer).toUpperCase()))
           .catch(reject);
         return;
       }
@@ -179,7 +181,7 @@
 
       worker.addEventListener('message', event => {
         if (event.data?.error) fail(new Error(event.data.error));
-        else if (event.data?.checksum !== undefined) done(event.data.checksum);
+        else if (event.data?.checksum !== undefined) done(String(event.data.checksum).toUpperCase());
       });
       worker.addEventListener('error', event => {
         fail(event.error || new Error(event.message || 'MD5 worker failed.'));
@@ -269,6 +271,122 @@
     } finally {
       try { await archive.close(); } catch (_) { /* worker may already be closed */ }
     }
+  }
+
+  const ARCHIVE_EXTENSIONS = ['.zip', '.rar', '.7z'];
+
+  let unrarModulePromise = null;
+
+  function loadUnrarModule() {
+    // libarchive.js cannot decompress RAR entries, so RAR extraction goes
+    // through node-unrar-js (vendored WASM build of the official unrar lib).
+    if (!unrarModulePromise) {
+      const moduleUrl = new URL('vendor/unrar/unrar.bundle.js', document.baseURI).href;
+      const wasmUrl = new URL('vendor/unrar/unrar.wasm', document.baseURI).href;
+      unrarModulePromise = Promise.all([
+        import(moduleUrl),
+        fetch(wasmUrl).then(response => {
+          if (!response.ok) throw new Error('Could not load the RAR extraction engine (unrar.wasm).');
+          return response.arrayBuffer();
+        })
+      ]).then(([module, wasmBinary]) => ({ module, wasmBinary }));
+    }
+    return unrarModulePromise;
+  }
+
+  async function extractRarEntries(file, selectNames) {
+    const { module, wasmBinary } = await loadUnrarModule();
+    const data = await file.arrayBuffer();
+    const extractor = await module.createExtractorFromData({ wasmBinary, data });
+    const names = [...extractor.getFileList().fileHeaders]
+      .filter(header => !header.flags?.directory)
+      .map(header => String(header.name || ''));
+    const wanted = selectNames(names);
+    if (!wanted.length) return [];
+    const extracted = [...extractor.extract({ files: wanted }).files];
+    return wanted.map(name => {
+      const entry = extracted.find(candidate => String(candidate?.fileHeader?.name || '') === name && candidate?.extraction);
+      if (!entry) throw new Error(`Could not extract "${name}" from "${file.name}".`);
+      return { name, blob: new Blob([entry.extraction]) };
+    });
+  }
+
+  async function extractLibarchiveEntries(file, selectNames) {
+    const Archive = await loadArchiveModule();
+    let source;
+    try {
+      const buffer = await file.arrayBuffer();
+      source = new Blob([buffer], { type: file.type || 'application/octet-stream' });
+    } catch (error) {
+      const sizeMb = file?.size ? (file.size / (1024 * 1024)).toFixed(1) : '?';
+      const reason = error?.name === 'NotReadableError'
+        ? `archive is too large to scan in-browser (${sizeMb} MB) — drop the contained file directly`
+        : (error?.message || error?.name || 'unknown read error');
+      const friendly = new Error(`Could not scan "${file?.name || 'archive'}": ${reason}.`);
+      friendly.cause = error;
+      throw friendly;
+    }
+    const archive = await Archive.open(source);
+    try {
+      const entries = (await archive.getFilesArray()) || [];
+      const entryName = entry => `${String(entry?.path || '')}${String(entry?.file?.name || '')}`;
+      const wanted = selectNames(entries.map(entryName));
+      const output = [];
+      for (const name of wanted) {
+        const entry = entries.find(candidate => entryName(candidate) === name);
+        if (!entry) throw new Error(`Could not extract "${name}" from "${file.name}".`);
+        const blob = typeof entry.file.extract === 'function' ? await entry.file.extract() : entry.file;
+        output.push({ name, blob });
+      }
+      return output;
+    } finally {
+      try { await archive.close(); } catch (_) { /* worker may already be closed */ }
+    }
+  }
+
+  // selectNames receives every file entry name in the archive and returns the
+  // names to extract (it may throw a user-facing Error instead).
+  function extractArchiveEntries(file, selectNames) {
+    return getFileExtension(file.name) === '.rar'
+      ? extractRarEntries(file, selectNames)
+      : extractLibarchiveEntries(file, selectNames);
+  }
+
+  async function extractArchiveEntryChecksum(file, targetExtension) {
+    const wanted = String(targetExtension).toLowerCase();
+    const matches = await extractArchiveEntries(file, names => {
+      const target = names.find(name => name.toLowerCase().endsWith(wanted));
+      if (!target) throw new Error(`No ${targetExtension} file found inside "${file.name}".`);
+      return [target];
+    });
+    const { name, blob } = matches[0];
+    const checksum = await calculateMd5FromBlob(blob);
+    return { checksum, entryName: name.split('/').pop() };
+  }
+
+  const COLOR_ROM_EXTENSIONS = ['.pal', '.vni', '.crz', '.pac', '.cromc'];
+
+  async function extractColorRomArchiveChecksums(file) {
+    const entries = await extractArchiveEntries(file, names => {
+      const matches = names.filter(name => COLOR_ROM_EXTENSIONS.includes(getFileExtension(name)));
+      if (!matches.length) {
+        throw new Error(`No Color ROM file (${COLOR_ROM_EXTENSIONS.join(' / ')}) found inside "${file.name}".`);
+      }
+      const pal = matches.find(name => getFileExtension(name) === '.pal');
+      const vni = matches.find(name => getFileExtension(name) === '.vni');
+      if (pal && vni) return [pal, vni];
+      if (matches.length === 1) return matches;
+      throw new Error(`"${file.name}" contains multiple Color ROM files — expected one file or a .pal/.vni pair.`);
+    });
+    const results = [];
+    for (const entry of entries) {
+      results.push({
+        name: entry.name.split('/').pop(),
+        extension: getFileExtension(entry.name),
+        checksum: await calculateMd5FromBlob(entry.blob)
+      });
+    }
+    return results;
   }
 
   function getChecksumExtensions(field, values) {
@@ -392,7 +510,15 @@
       });
     }
 
-    container.append(cover, summary);
+    const nsfwToggle = element('label', 'nsfw-toggle table-nsfw-toggle');
+    const nsfwCheck = document.createElement('input');
+    nsfwCheck.type = 'checkbox';
+    nsfwCheck.checked = values?.nsfw === true;
+    nsfwCheck.setAttribute('aria-label', 'Mark this table NSFW');
+    nsfwCheck.addEventListener('change', () => callbacks.onNsfw?.('nsfw', nsfwCheck.checked));
+    nsfwToggle.append(nsfwCheck, document.createTextNode('NSFW'));
+
+    container.append(cover, summary, nsfwToggle);
     if (clearButton) container.appendChild(clearButton);
   }
 
@@ -449,11 +575,23 @@
       const selectedId = selections[category] || '';
       const selectedItem = items.find(item => item.id === selectedId) || null;
       const bundled = Boolean(config.bundleField && values[config.bundleField]);
+      const overridden = Boolean(config.overrideField && values[config.overrideField]);
       const detailOpen = callbacks.isDetailOpen(category);
 
       const row = element('div', `asset-row${selectedItem ? ' has-selection' : ''}${detailOpen ? ' details-open' : ''}`);
       row.dataset.category = category;
-      row.appendChild(element('div', 'asset-name', config.label));
+      const selectedItemUrl = selectedItem ? getItemUrl(selectedItem) : '';
+      if (selectedItemUrl) {
+        const nameLink = document.createElement('a');
+        nameLink.className = 'asset-name';
+        nameLink.href = selectedItemUrl;
+        nameLink.target = '_blank';
+        nameLink.rel = 'noopener noreferrer';
+        nameLink.textContent = config.label;
+        row.appendChild(nameLink);
+      } else {
+        row.appendChild(element('div', 'asset-name', config.label));
+      }
 
       const select = document.createElement('select');
       select.setAttribute('aria-label', `Select ${config.singular}`);
@@ -484,14 +622,40 @@
       }
       row.appendChild(selectWrap);
 
-      if (config.bundleField) {
-        const bundleLabel = element('label', 'bundle-toggle');
-        const bundleCheck = document.createElement('input');
-        bundleCheck.type = 'checkbox';
-        bundleCheck.checked = bundled;
-        bundleCheck.addEventListener('change', () => callbacks.onBundle(config.bundleField, bundleCheck.checked));
-        bundleLabel.append(bundleCheck, document.createTextNode('Bundled'));
-        row.appendChild(bundleLabel);
+      if (config.bundleField || config.nsfwField || config.overrideField) {
+        const toggles = element('div', 'asset-toggle-stack');
+        if (config.bundleField) {
+          const bundleLabel = element('label', 'bundle-toggle');
+          const bundleCheck = document.createElement('input');
+          bundleCheck.type = 'checkbox';
+          bundleCheck.checked = bundled;
+          bundleCheck.addEventListener('change', () => callbacks.onBundle(config.bundleField, bundleCheck.checked));
+          bundleLabel.append(bundleCheck, document.createTextNode('Bundled'));
+          toggles.appendChild(bundleLabel);
+        }
+        if (config.nsfwField) {
+          const nsfwLabel = element('label', 'bundle-toggle nsfw-toggle');
+          const nsfwCheck = document.createElement('input');
+          nsfwCheck.type = 'checkbox';
+          nsfwCheck.checked = values[config.nsfwField] === true;
+          // The table-level NSFW flag owns the per-asset flags while checked.
+          nsfwCheck.disabled = (!selectedId && !bundled && !overridden) || values.nsfw === true;
+          nsfwCheck.setAttribute('aria-label', `Mark ${config.singular} NSFW`);
+          nsfwCheck.addEventListener('change', () => callbacks.onNsfw?.(config.nsfwField, nsfwCheck.checked));
+          nsfwLabel.append(nsfwCheck, document.createTextNode('NSFW'));
+          toggles.appendChild(nsfwLabel);
+        }
+        if (config.overrideField) {
+          const overrideLabel = element('label', 'bundle-toggle override-toggle');
+          const overrideCheck = document.createElement('input');
+          overrideCheck.type = 'checkbox';
+          overrideCheck.checked = values[config.overrideField] === true;
+          overrideCheck.setAttribute('aria-label', `Override ${config.singular} — unlock this tab without a VPS entry`);
+          overrideCheck.addEventListener('change', () => callbacks.onOverride?.(config.overrideField, overrideCheck.checked));
+          overrideLabel.append(overrideCheck, document.createTextNode('Override'));
+          toggles.appendChild(overrideLabel);
+        }
+        row.appendChild(toggles);
       } else {
         row.appendChild(element('span'));
       }
@@ -555,6 +719,13 @@
       if (name === 'pupArchiveRoot') return ' field-pup-root';
       if (name === 'pupRequired') return ' field-pup-required field-checkbox-plain';
     }
+    if (stepId === 'altSound') {
+      if (name === 'altSoundVPSId') return ' field-alt-id field-id-standard';
+      if (name === 'altSoundChecksum') return ' field-alt-checksum field-checksum-standard field-alt-sound-checksum checksum-drop-field';
+      if (name === 'altSoundNotes') return ' field-alt-notes field-textarea-two';
+      if (name === 'altSoundArchiveFormat') return ' field-alt-format';
+      if (name === 'altSoundArchiveRoot') return ' field-alt-root';
+    }
     if (field.readonly) return ' field-compact-id field-id-standard';
     if (/Checksum/i.test(field.name)) return ' field-checksum field-checksum-standard';
     if (field.multiline) return ' field-wide field-textarea-three';
@@ -573,11 +744,23 @@
       input.id = controlId;
       input.name = field.yml_field;
       input.type = 'checkbox';
-      input.checked = value === true;
+      // invertBoolean fields (e.g. "Disable for Wizard" backed by `enabled`)
+      // display the opposite sense of the stored value: checked means the
+      // underlying field is explicitly false, and checking the box writes
+      // false while unchecking it omits the key entirely.
+      input.checked = field.invertBoolean ? value === false : value === true;
       input.disabled = Boolean(field.disabledUnless && values[field.disabledUnless] !== true);
       input.setAttribute('aria-label', field.name);
-      input.addEventListener('change', () => onChange(field.yml_field, input.checked, field));
-      row.append(input, element('span', '', field.name));
+      input.addEventListener('change', () => {
+        const nextValue = field.invertBoolean
+          ? (input.checked ? false : undefined)
+          : input.checked;
+        onChange(field.yml_field, nextValue, field);
+      });
+      const label = field.stackedLabel
+        ? element('span', 'checkbox-label-stacked', field.name.replace(' ', '\n'))
+        : element('span', '', field.name);
+      row.append(input, label);
       wrapper.appendChild(row);
       return wrapper;
     }
@@ -663,10 +846,12 @@
     label.appendChild(element('span', '', field.name));
     wrapper.appendChild(label);
 
+    const isChecksumField = /checksum/i.test(field.yml_field);
     input.id = controlId;
     input.value = Array.isArray(value) ? (value[0] || '') : value;
+    if (isChecksumField && input.value) input.value = String(input.value).toUpperCase();
     input.setAttribute('aria-label', field.name);
-    input.disabled = Boolean(field.disabledUnless && values[field.disabledUnless] !== true);
+    input.disabled = Boolean(field.disabled) || Boolean(field.disabledUnless && values[field.disabledUnless] !== true);
     if (usesPlaceholderLabel) {
       const hint = field.placeholder || (field.type === 'array' ? 'comma-separated' : '');
       input.placeholder = hint ? `${field.name} — ${hint}` : field.name;
@@ -680,6 +865,19 @@
       if (field.type === 'int') {
         nextValue = nextValue.replace(/\D+/g, '').slice(0, field.maxlength || 3);
         input.value = nextValue;
+      }
+      if (isChecksumField) {
+        const upper = nextValue.toUpperCase();
+        if (upper !== nextValue) {
+          const selectionStart = input.selectionStart;
+          const selectionEnd = input.selectionEnd;
+          input.value = upper;
+          try { input.setSelectionRange(selectionStart, selectionEnd); } catch (_) { /* selects unsupported */ }
+        }
+        nextValue = upper;
+        // Only the primary (index 0) is edited here — additional checksums
+        // added via the checksum-additional modal must survive this edit.
+        nextValue = replacePrimaryChecksum(values[field.yml_field], nextValue);
       }
       onChange(field.yml_field, nextValue, field);
     });
@@ -707,7 +905,8 @@
       const loadingTrack = element('span', 'checksum-loading-track');
       loadingTrack.setAttribute('aria-hidden', 'true');
       loadingTrack.appendChild(element('span', 'checksum-loading-dot'));
-      const dropHint = element('span', 'checksum-drop-hint', `Drop ${allowed.join(' / ')} file to calculate MD5${field.archiveBrowser ? ' and browse folders' : ''}`);
+      const hintExtensions = field.colorRomArchiveScan ? [...allowed, ...ARCHIVE_EXTENSIONS] : allowed;
+      const dropHint = element('span', 'checksum-drop-hint', `Drop ${hintExtensions.join(' / ')} file to calculate MD5${field.archiveBrowser ? ' and browse folders' : ''}`);
       statusRow.append(loadingTrack, dropHint);
       const setDropState = active => wrapper.classList.toggle('checksum-drop-active', active);
       const setLoading = active => {
@@ -736,8 +935,10 @@
         if (!file) return;
         const extension = getFileExtension(file.name);
         const currentAllowed = getChecksumExtensions(field, values);
-        if (!currentAllowed.includes(extension)) {
-          dropHint.textContent = `Invalid file type. Allowed: ${currentAllowed.join(', ')}`;
+        const isColorArchiveDrop = Boolean(field.colorRomArchiveScan) && ARCHIVE_EXTENSIONS.includes(extension);
+        if (!currentAllowed.includes(extension) && !isColorArchiveDrop) {
+          const accepted = field.colorRomArchiveScan ? [...currentAllowed, ...ARCHIVE_EXTENSIONS] : currentAllowed;
+          dropHint.textContent = `Invalid file type. Allowed: ${accepted.join(', ')}`;
           dropHint.classList.add('error');
           return;
         }
@@ -745,20 +946,81 @@
         dropHint.textContent = `Processing ${file.name}…`;
         setLoading(true);
 
-        const checksumTask = calculateMd5FromBlob(file);
+        if (isColorArchiveDrop) {
+          try {
+            const results = await extractColorRomArchiveChecksums(file);
+            const pal = results.find(result => result.extension === '.pal');
+            const vni = results.find(result => result.extension === '.vni');
+            const palVniMode = Boolean(vni);
+            if (palVniMode !== (values.coloredROMPin2DMD === true)) {
+              // The mode-change handler resets both inputs and hints to match
+              // surviving state (a kept .pal checksum stays put).
+              onChange('coloredROMPin2DMD', palVniMode, { yml_field: 'coloredROMPin2DMD', type: 'bool' });
+              const flag = document.getElementById('field-coloredROMPin2DMD');
+              if (flag) flag.checked = palVniMode;
+            }
+            const primaryResult = pal || (palVniMode ? null : results[0]);
+            const sources = { ...(values.__checksumSources || {}) };
+            if (primaryResult) {
+              input.value = primaryResult.checksum;
+              onChange(field.yml_field, replacePrimaryChecksum(values[field.yml_field], primaryResult.checksum), field);
+              sources[field.yml_field] = { name: primaryResult.name, extension: primaryResult.extension };
+              dropHint.textContent = `MD5 calculated (${primaryResult.name}) from ${file.name}`;
+            } else {
+              // Lone .vni drop: restore the primary field's own state-driven
+              // subtext instead of leaving "Processing…" behind.
+              syncConditionalFields(values);
+            }
+            if (vni) {
+              const secondaryInput = document.getElementById('field-coloredROMChecksumSecondary');
+              if (secondaryInput) {
+                secondaryInput.value = vni.checksum;
+                secondaryInput.disabled = false;
+              }
+              onChange('coloredROMChecksumSecondary', vni.checksum, { yml_field: 'coloredROMChecksumSecondary', type: 'str' });
+              sources.coloredROMChecksumSecondary = { name: vni.name, extension: '.vni' };
+              const secondaryHint = document.querySelector('.field-color-secondary .checksum-drop-hint');
+              if (secondaryHint) {
+                secondaryHint.classList.remove('error');
+                secondaryHint.textContent = `MD5 calculated (${vni.name}) from ${file.name}`;
+              }
+            }
+            onChange('__checksumSources', sources, { uiOnly: true });
+          } catch (error) {
+            dropHint.classList.add('error');
+            dropHint.textContent = error?.message || 'Archive scan failed.';
+            console.warn('Color ROM archive scan failed:', error);
+          }
+          setLoading(false);
+          return;
+        }
+
+        if (field.archiveFormatField && ARCHIVE_EXTENSIONS.includes(extension)) {
+          const format = extension.slice(1);
+          onChange(field.archiveFormatField, format, { yml_field: field.archiveFormatField, type: 'select' });
+          const formatSelect = document.getElementById(`field-${field.archiveFormatField}`);
+          if (formatSelect) formatSelect.value = format;
+        }
+
+        const isArchiveScanDrop = Boolean(field.archiveScanExtension) && ARCHIVE_EXTENSIONS.includes(extension);
+        const checksumTask = isArchiveScanDrop
+          ? extractArchiveEntryChecksum(file, field.archiveScanExtension)
+          : calculateMd5FromBlob(file).then(checksum => ({ checksum }));
         const archiveTask = field.archiveBrowser
           ? readArchiveDirectories(file)
           : Promise.resolve(null);
         const [checksumResult, archiveResult] = await Promise.allSettled([checksumTask, archiveTask]);
 
         const messages = [];
-        if (checksumResult.status === 'fulfilled' && checksumResult.value) {
-          input.value = checksumResult.value;
-          onChange(field.yml_field, checksumResult.value, field);
+        if (checksumResult.status === 'fulfilled' && checksumResult.value?.checksum) {
+          input.value = checksumResult.value.checksum;
+          onChange(field.yml_field, replacePrimaryChecksum(values[field.yml_field], checksumResult.value.checksum), field);
           const sources = { ...(values.__checksumSources || {}) };
           sources[field.yml_field] = { name: file.name, extension };
           onChange('__checksumSources', sources, { uiOnly: true });
-          messages.push('MD5 calculated');
+          messages.push(checksumResult.value.entryName
+            ? `MD5 calculated (${checksumResult.value.entryName})`
+            : 'MD5 calculated');
         } else {
           const reason = checksumResult.reason?.message || 'MD5 failed';
           messages.push(reason);
@@ -793,19 +1055,41 @@
     return wrapper;
   }
 
+  // Runs when PAL/VNI is toggled: it hard-resets the Color ROM checksum pair
+  // to match state — surviving values (a kept .pal checksum) stay visible with
+  // their calculated-from subtext, everything else returns to instructions.
   function syncConditionalFields(values) {
     const pin2dmd = values?.coloredROMPin2DMD === true;
+    const sources = values?.__checksumSources || {};
+    const primary = document.getElementById('field-coloredROMChecksum');
     const secondary = document.getElementById('field-coloredROMChecksumSecondary');
-    if (secondary) secondary.disabled = !pin2dmd;
+    if (primary) primary.value = values?.coloredROMChecksum ? String(values.coloredROMChecksum).toUpperCase() : '';
+    if (secondary) {
+      secondary.disabled = !pin2dmd;
+      secondary.value = values?.coloredROMChecksumSecondary ? String(values.coloredROMChecksumSecondary).toUpperCase() : '';
+    }
 
     const primaryHint = document.querySelector('.field-color-checksum .checksum-drop-hint');
-    if (primaryHint && !primaryHint.classList.contains('error')) {
-      primaryHint.textContent = `Drop ${pin2dmd ? '.pal' : '.crz'} file to calculate MD5`;
+    if (primaryHint) {
+      primaryHint.classList.remove('error');
+      if (values?.coloredROMChecksum && sources.coloredROMChecksum?.name) {
+        primaryHint.textContent = `MD5 calculated from ${sources.coloredROMChecksum.name}`;
+      } else {
+        const allowed = pin2dmd ? ['.pal', '.vni'] : ['.crz', '.pal', '.pac', '.cromc'];
+        primaryHint.textContent = `Drop ${[...allowed, ...ARCHIVE_EXTENSIONS].join(' / ')} file to calculate MD5`;
+      }
     }
 
     const secondaryHint = document.querySelector('.field-color-secondary .checksum-drop-hint');
-    if (secondaryHint && !secondaryHint.classList.contains('error')) {
-      secondaryHint.textContent = 'Drop .vni file to calculate MD5';
+    if (secondaryHint) {
+      secondaryHint.classList.remove('error');
+      if (pin2dmd && values?.coloredROMChecksumSecondary && sources.coloredROMChecksumSecondary?.name) {
+        secondaryHint.textContent = `MD5 calculated from ${sources.coloredROMChecksumSecondary.name}`;
+      } else {
+        secondaryHint.textContent = pin2dmd
+          ? 'Drop .vni file to calculate MD5'
+          : 'Enable PAL/VNI to use a second checksum';
+      }
     }
   }
 
@@ -844,6 +1128,8 @@
         marker.setAttribute('aria-hidden', 'true');
         tab.appendChild(marker);
         tab.setAttribute('aria-label', `${step.label}: ${status.label}`);
+      } else if (status.className === 'ready') {
+        tab.classList.add('has-ready');
       }
       tab.addEventListener('click', () => callbacks.onActivate(step.id));
       tabList.appendChild(tab);

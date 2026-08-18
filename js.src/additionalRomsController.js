@@ -41,23 +41,72 @@
       .filter(item => !used.has(String(item?.id || '')));
   }
 
-  function validateEntry(entry, index = -1) {
+  function validateEntryDetailed(entry, index = -1) {
     const errors = [];
-    if (!entry.vpsId) errors.push('Select a ROM VPS ID.');
-    if (!entry.checksum) errors.push('Checksum is required.');
-    else if (!isMd5Hash(entry.checksum)) errors.push('Checksum must contain exactly 32 hexadecimal characters.');
-    if (entry.urlOverride && !entry.versionOverride) errors.push('Version Override is required when URL Override is used.');
-    if (entry.versionOverride && !entry.urlOverride) errors.push('URL Override is required when Version Override is used.');
+    const add = (field, message) => errors.push({ field, message });
+    // ROM Override means the primary ROM has no VPS DB entry at all — an
+    // Additional ROM can't pull one from the DB either, so the picker is
+    // disabled in the dialog (see open()) and not required here. The other
+    // vpsId checks below are already gated on entry.vpsId being truthy, so
+    // they naturally no-op once it's left empty.
+    const overrideActive = runtime.state.values?.romOverride === true;
+    if (!overrideActive && !entry.vpsId) add('vpsId', 'Select a ROM VPS ID.');
+    if (!entry.checksum) add('checksum', 'Checksum is required.');
+    else if (!isMd5Hash(entry.checksum)) add('checksum', 'Checksum must contain exactly 32 hexadecimal characters.');
+    if (entry.urlOverride && !entry.versionOverride) add('versionOverride', 'Version Override is required when URL Override is used.');
+    if (entry.versionOverride && !entry.urlOverride) add('urlOverride', 'URL Override is required when Version Override is used.');
 
     const primary = String(runtime.state.selections?.romFiles || runtime.state.values?.romVPSId || '');
-    if (entry.vpsId && entry.vpsId === primary) errors.push('The primary ROM cannot also be an Additional ROM.');
+    if (entry.vpsId && entry.vpsId === primary) add('vpsId', 'The primary ROM cannot also be an Additional ROM.');
     if (entry.vpsId && !allRoms().some(item => String(item?.id || '') === entry.vpsId)) {
-      errors.push('The selected Additional ROM is not available for this table.');
+      add('vpsId', 'The selected Additional ROM is not available for this table.');
     }
     if (entry.vpsId && entries().some((candidate, candidateIndex) => (
       candidateIndex !== index && String(candidate?.vpsId || '') === entry.vpsId
-    ))) errors.push('That ROM is already in Additional ROMs.');
+    ))) add('vpsId', 'That ROM is already in Additional ROMs.');
     return errors;
+  }
+
+  function validateEntry(entry, index = -1) {
+    return validateEntryDetailed(entry, index).map(error => error.message);
+  }
+
+  const FIELD_CONTROL_IDS = {
+    vpsId: 'additionalRomVpsId',
+    checksum: 'additionalRomChecksum',
+    versionOverride: 'additionalRomVersionOverride',
+    urlOverride: 'additionalRomUrlOverride'
+  };
+
+  function clearFieldErrorPresentation(node) {
+    node.querySelectorAll('.field.has-field-error').forEach(field => {
+      field.classList.remove('has-field-error');
+      field.removeAttribute('data-error-count');
+      field.querySelector(':scope > .field-error-dot')?.remove();
+    });
+  }
+
+  function presentFieldErrors(node, detailed) {
+    clearFieldErrorPresentation(node);
+    const grouped = new Map();
+    detailed.forEach(({ field, message }) => {
+      const messages = grouped.get(field) || [];
+      if (!messages.includes(message)) messages.push(message);
+      grouped.set(field, messages);
+    });
+    grouped.forEach((messages, field) => {
+      const wrapper = node.querySelector(`#${FIELD_CONTROL_IDS[field]}`)?.closest('.field');
+      if (!wrapper) return;
+      wrapper.classList.add('has-field-error');
+      wrapper.dataset.errorCount = String(messages.length);
+      const dot = document.createElement('span');
+      dot.className = 'field-error-dot';
+      dot.dataset.tooltip = messages.join(' ');
+      dot.setAttribute('role', 'img');
+      dot.setAttribute('aria-label', messages.join(' '));
+      dot.tabIndex = 0;
+      wrapper.appendChild(dot);
+    });
   }
 
   function md5(buffer) {
@@ -97,7 +146,7 @@
       d0 = (d0 + d) >>> 0;
     }
     return [a0, b0, c0, d0].map(value => [0,8,16,24]
-      .map(shift => ((value >>> shift) & 0xff).toString(16).padStart(2, '0')).join('')).join('');
+      .map(shift => ((value >>> shift) & 0xff).toString(16).padStart(2, '0')).join('')).join('').toUpperCase();
   }
 
   function dialog() {
@@ -113,7 +162,6 @@
         <button class="dialog-close" data-additional-rom-close type="button" aria-label="Close additional ROM">×</button>
       </div>
       <div class="dialog-body additional-rom-body">
-        <div class="additional-rom-errors" id="additionalRomErrors" role="alert" hidden></div>
         <div class="field-grid additional-rom-grid">
           <div class="field field-wide"><label for="additionalRomVpsId"><span>VPS ID</span></label><select id="additionalRomVpsId"></select></div>
           <div class="field field-wide checksum-drop-field" id="additionalRomChecksumField">
@@ -130,6 +178,7 @@
           </div>
         </details>
         <div class="additional-rom-dialog-actions">
+          <button class="text-btn danger-btn" id="additionalRomRemove" type="button" hidden>Remove</button>
           <button class="text-btn" data-additional-rom-close type="button">Cancel</button>
           <button class="text-btn preview-primary" id="additionalRomSave" type="button">Save ROM</button>
         </div>
@@ -138,6 +187,16 @@
     node.querySelectorAll('[data-additional-rom-close]').forEach(button => button.addEventListener('click', () => node.close()));
     node.addEventListener('click', event => { if (event.target === node) node.close(); });
     node.querySelector('#additionalRomSave').addEventListener('click', save);
+    node.querySelector('#additionalRomRemove').addEventListener('click', removeEditing);
+    const checksumInput = node.querySelector('#additionalRomChecksum');
+    checksumInput.addEventListener('input', () => {
+      const upper = checksumInput.value.toUpperCase();
+      if (upper === checksumInput.value) return;
+      const selectionStart = checksumInput.selectionStart;
+      const selectionEnd = checksumInput.selectionEnd;
+      checksumInput.value = upper;
+      try { checksumInput.setSelectionRange(selectionStart, selectionEnd); } catch (_) { /* no-op */ }
+    });
     bindDrop(node);
     return node;
   }
@@ -185,21 +244,44 @@
     editingIndex = index;
     const current = index >= 0 ? entries()[index] || {} : {};
     const select = node.querySelector('#additionalRomVpsId');
-    select.replaceChildren(new Option('Select an additional ROM', ''));
-    const items = choices(index);
-    if (current.vpsId && !items.some(item => String(item?.id || '') === String(current.vpsId))) {
-      items.unshift({ id: current.vpsId });
+    // ROM Override means there's no VPS entry for the primary ROM — an
+    // Additional ROM entry can't have one either, so the picker is disabled
+    // and not populated (see validateEntryDetailed for the matching
+    // not-required change).
+    const overrideActive = runtime.state.values?.romOverride === true;
+    select.replaceChildren(new Option(
+      overrideActive ? 'Not needed — ROM Override is enabled' : 'Select an additional ROM', ''
+    ));
+    if (!overrideActive) {
+      const items = choices(index);
+      if (current.vpsId && !items.some(item => String(item?.id || '') === String(current.vpsId))) {
+        items.unshift({ id: current.vpsId });
+      }
+      items.forEach(item => select.add(new Option(getItemLabel(item), String(item?.id || ''))));
     }
-    items.forEach(item => select.add(new Option(getItemLabel(item), String(item?.id || ''))));
     select.value = String(current.vpsId || '');
+    select.disabled = overrideActive;
     node.querySelector('#additionalRomChecksum').value = String(current.checksum || '');
     node.querySelector('#additionalRomVersionOverride').value = String(current.versionOverride || '');
     node.querySelector('#additionalRomUrlOverride').value = String(current.urlOverride || '');
-    node.querySelector('#additionalRomErrors').hidden = true;
+    clearFieldErrorPresentation(node);
     node.querySelector('#additionalRomTitle').textContent = index >= 0 ? 'Edit Additional ROM' : 'Add Additional ROM';
+    node.querySelector('#additionalRomRemove').hidden = index < 0;
     if (typeof node.showModal === 'function') node.showModal();
     else node.setAttribute('open', '');
-    select.focus();
+    if (overrideActive) node.querySelector('#additionalRomChecksum').focus();
+    else select.focus();
+  }
+
+  function removeEditing() {
+    if (editingIndex < 0) return;
+    const node = dialog();
+    const next = entries();
+    next.splice(editingIndex, 1);
+    runtime.state.callbacks.onChange('additionalRoms', next, definition());
+    node.close();
+    render();
+    runtime.schedule();
   }
 
   function save() {
@@ -210,13 +292,15 @@
       versionOverride: node.querySelector('#additionalRomVersionOverride').value.trim(),
       urlOverride: node.querySelector('#additionalRomUrlOverride').value.trim()
     };
-    const errors = validateEntry(entry, editingIndex);
-    const box = node.querySelector('#additionalRomErrors');
-    if (errors.length) {
-      box.hidden = false;
-      box.replaceChildren(...errors.map(message => Object.assign(document.createElement('div'), { textContent: message })));
+    const detailedErrors = validateEntryDetailed(entry, editingIndex);
+    if (detailedErrors.length) {
+      presentFieldErrors(node, detailedErrors);
+      const firstInvalid = ['vpsId', 'checksum', 'versionOverride', 'urlOverride']
+        .find(name => detailedErrors.some(error => error.field === name));
+      if (firstInvalid) node.querySelector(`#${FIELD_CONTROL_IDS[firstInvalid]}`)?.focus();
       return;
     }
+    clearFieldErrorPresentation(node);
     const next = entries();
     if (editingIndex >= 0) next[editingIndex] = entry;
     else next.push(entry);
@@ -226,11 +310,18 @@
     runtime.schedule();
   }
 
+  const MAX_ADDITIONAL_ROMS = 1;
+
+  function romIndicatorSvg() {
+    return '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1.5"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/></svg>';
+  }
+
   function render() {
     const panel = document.getElementById('config-panel-rom');
     const advanced = panel?.querySelector('.compact-advanced');
     const summary = advanced?.querySelector(':scope > summary');
     if (!advanced || !summary || !runtime.state.callbacks) return;
+    summary.classList.add('additional-rom-controls');
 
     let add = summary.querySelector('.additional-rom-add');
     if (!add) {
@@ -248,41 +339,32 @@
       summary.appendChild(add);
     }
 
-    let controls = advanced.querySelector('.additional-rom-controls');
-    if (!controls) {
-      controls = document.createElement('div');
-      controls.className = 'additional-rom-controls';
-      advanced.appendChild(controls);
-    }
-    controls.querySelector('.additional-rom-list')?.remove();
-    const list = document.createElement('div');
-    list.className = 'additional-rom-list';
-    controls.prepend(list);
     const current = entries();
+    add.hidden = current.length >= MAX_ADDITIONAL_ROMS;
+
+    let indicator = summary.querySelector('.additional-rom-indicator');
     if (!current.length) {
-      list.innerHTML = '<p class="additional-rom-empty">No additional ROMs configured.</p>';
+      indicator?.remove();
       return;
     }
-    current.forEach((entry, index) => {
-      const row = document.createElement('div');
-      row.className = 'additional-rom-item';
-      row.innerHTML = '<div><strong></strong><small></small></div><div class="additional-rom-actions"></div>';
-      row.querySelector('strong').textContent = entry.vpsId || `Additional ROM ${index + 1}`;
-      row.querySelector('small').textContent = entry.checksum || 'Checksum missing';
-      const actions = row.querySelector('.additional-rom-actions');
-      const edit = Object.assign(document.createElement('button'), { type: 'button', className: 'text-btn', textContent: 'Edit' });
-      edit.addEventListener('click', () => open(index));
-      const remove = Object.assign(document.createElement('button'), { type: 'button', className: 'text-btn danger-btn', textContent: 'Remove' });
-      remove.addEventListener('click', () => {
-        const next = entries();
-        next.splice(index, 1);
-        runtime.state.callbacks.onChange('additionalRoms', next, definition());
-        render();
-        runtime.schedule();
+
+    if (!indicator) {
+      indicator = document.createElement('button');
+      indicator.type = 'button';
+      indicator.className = 'additional-rom-indicator';
+      indicator.innerHTML = romIndicatorSvg();
+      indicator.addEventListener('click', event => {
+        event.preventDefault();
+        event.stopPropagation();
+        open(0);
       });
-      actions.append(edit, remove);
-      list.appendChild(row);
-    });
+      summary.insertBefore(indicator, add);
+    }
+    const entry = current[0];
+    const label = entry.vpsId || 'Additional ROM';
+    const detail = entry.checksum || 'Checksum missing';
+    indicator.dataset.tooltip = `${label} · ${detail}`;
+    indicator.setAttribute('aria-label', `Additional ROM: ${label}. Activate to edit.`);
   }
 
   const api = Object.freeze({ entries, validateEntry, open, render });

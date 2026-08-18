@@ -144,7 +144,7 @@
         coloredROMChecksum: ['a'.repeat(32), 'b'.repeat(32)],
         unsupportedField: 'ignored'
       });
-      const normalizedValid = normalized.values.enabled === false
+      const normalizedValid = normalized.values.enabled === undefined
         && normalized.values.testers === 'Alpha, Beta'
         && normalized.values.coloredROMChecksum === 'a'.repeat(32)
         && normalized.values.coloredROMChecksumSecondary === 'b'.repeat(32)

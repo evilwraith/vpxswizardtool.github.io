@@ -10,6 +10,17 @@
       .replace(/'/g, '&#039;');
   }
 
+  // Wraps CSS.escape with a manual fallback (same approach the CSSOM spec's
+  // own polyfill uses) for browsers that don't implement it, so selector
+  // lookups by ID/name degrade instead of throwing a ReferenceError.
+  function cssEscape(value) {
+    const input = String(value ?? '');
+    if (typeof CSS !== 'undefined' && typeof CSS.escape === 'function') {
+      return CSS.escape(input);
+    }
+    return input.replace(/([^a-zA-Z0-9_-])/g, '\\$1');
+  }
+
   function humanize(key) {
     return String(key ?? '')
       .replace(/([A-Z])/g, ' $1')
@@ -29,18 +40,34 @@
     });
   }
 
+  function itemUrlEntries(item) {
+    const urls = item?.urls;
+    if (Array.isArray(urls)) return urls;
+    if (urls && typeof urls === 'object') return Object.values(urls);
+    return [];
+  }
+
+  function isUrlEntryBroken(entry) {
+    return Boolean(entry) && (entry.broken === true || entry.broken === 'true');
+  }
+
+  // An item counts as broken only when every one of its links is broken (or
+  // it has no usable link at all) — a single broken mirror no longer
+  // disqualifies an item that still has a working alternate link.
   function isItemBroken(item) {
     if (!item || typeof item !== 'object') return false;
     if (item.broken === true || item.broken === 'true') return true;
 
-    const urls = item.urls;
-    if (Array.isArray(urls)) {
-      return urls.some(url => url && (url.broken === true || url.broken === 'true'));
-    }
-    if (urls && typeof urls === 'object') {
-      return Object.values(urls).some(url => url && (url.broken === true || url.broken === 'true'));
-    }
-    return false;
+    const entries = itemUrlEntries(item);
+    if (!entries.length) return false;
+    return !entries.some(entry => entry && typeof entry.url === 'string' && entry.url.trim() && !isUrlEntryBroken(entry));
+  }
+
+  function getItemUrl(item) {
+    if (!item || typeof item !== 'object') return '';
+    const list = itemUrlEntries(item);
+    const usable = list.find(entry => entry && typeof entry.url === 'string' && entry.url.trim() && !isUrlEntryBroken(entry));
+    return (usable || list.find(entry => entry && typeof entry.url === 'string' && entry.url.trim()))?.url?.trim() || '';
   }
 
   const EXCLUDED_VPX_FORMATS = new Set(['FP', 'FX', 'FX2', 'FX3']);
@@ -75,12 +102,36 @@
     return [...unique.values()];
   }
 
+  const ITEM_UPDATED_KEYS = ['updatedAt', 'modifiedAt', 'lastUpdated', 'updated', 'createdAt'];
+
+  function itemUpdatedTimestamp(item) {
+    if (!item || typeof item !== 'object') return 0;
+    for (const key of ITEM_UPDATED_KEYS) {
+      const raw = item[key];
+      if (raw === undefined || raw === null || raw === '') continue;
+      if (typeof raw === 'number' && Number.isFinite(raw)) {
+        return raw < 100000000000 ? raw * 1000 : raw;
+      }
+      const parsed = Date.parse(String(raw));
+      if (Number.isFinite(parsed)) return parsed;
+    }
+    return 0;
+  }
+
+  function sortByUpdatedDesc(items) {
+    if (!Array.isArray(items) || items.length < 2) return Array.isArray(items) ? items.slice() : [];
+    return items
+      .map((item, index) => ({ item, index, timestamp: itemUpdatedTimestamp(item) }))
+      .sort((left, right) => right.timestamp - left.timestamp || left.index - right.index)
+      .map(entry => entry.item);
+  }
+
   function getCategoryItems(record, category, config = {}, context = {}) {
     if (!record) return [];
 
     if (category === 'tableFiles') {
       const tableFiles = Array.isArray(record.tableFiles) ? record.tableFiles : [];
-      return tableFiles.filter(item => !isExcludedVpxFormat(item) && !isVpuPatchItem(item));
+      return sortByUpdatedDesc(tableFiles.filter(item => !isExcludedVpxFormat(item) && !isVpuPatchItem(item)));
     }
 
     if (category === 'vpuPatchFiles') {
@@ -91,17 +142,17 @@
       const inferred = (Array.isArray(record.tableFiles) ? record.tableFiles : []).filter(isVpuPatchItem);
       const selectedVpxId = String(context?.selections?.tableFiles ?? context?.selectedVpxId ?? '').trim();
 
-      return uniqueItems([...direct, ...inferred]).filter(item => {
+      return sortByUpdatedDesc(uniqueItems([...direct, ...inferred]).filter(item => {
         const parentId = getParentId(item);
         return !parentId || (selectedVpxId && parentId === selectedVpxId);
-      });
+      }));
     }
 
     const sourceFields = Array.isArray(config.sourceFields) && config.sourceFields.length
       ? config.sourceFields
       : [category];
     for (const field of sourceFields) {
-      if (Array.isArray(record?.[field])) return record[field];
+      if (Array.isArray(record?.[field])) return sortByUpdatedDesc(record[field]);
     }
     return [];
   }
@@ -111,12 +162,19 @@
     const items = getCategoryItems(record, category, config, { selections });
     const selectedId = String(selections?.[category] || '').trim();
     const bundled = Boolean(config.bundleField && values?.[config.bundleField] === true);
+    const overridden = Boolean(config.overrideField && values?.[config.overrideField] === true);
 
-    if (selectedId && bundled) {
+    if (selectedId && (bundled || overridden)) {
       return { key: 'orange', label: 'Conflict', active: true, safe: false, items };
     }
-    if (selectedId || bundled) {
-      return { key: 'green', label: selectedId ? 'Selected' : 'Bundled', active: true, safe: true, items };
+    if (selectedId || bundled || overridden) {
+      return {
+        key: 'green',
+        label: selectedId ? 'Selected' : bundled ? 'Bundled' : 'Override',
+        active: true,
+        safe: true,
+        items
+      };
     }
     if (!items.length) {
       return { key: 'neutral', label: 'Unavailable', active: false, safe: false, items };
@@ -181,12 +239,27 @@
     return [String(value).trim()].filter(Boolean);
   }
 
+  // Checksum fields can hold a plain string (one checksum) or an array (the
+  // primary plus "additional" ones added via the checksum-additional modal —
+  // see js.src/checksumAdditionalController.js). Anything that edits the
+  // primary value directly (typing, or a file-drop MD5 calculation) must
+  // replace only index 0 and keep the rest, or those additional entries are
+  // silently dropped.
+  function replacePrimaryChecksum(current, next) {
+    const value = String(next || '').trim();
+    if (!Array.isArray(current) || current.length < 2) return value;
+    const rest = current.slice(1).map(item => String(item || '').trim()).filter(Boolean);
+    const combined = value ? [value, ...rest] : rest;
+    return combined.length > 1 ? combined : (combined[0] || '');
+  }
+
   function buildYaml(values, options = {}) {
     const data = { ...values };
     const omit = options.omit instanceof Set ? options.omit : new Set(options.omit || []);
 
-    // The wizard flag is intentionally explicit in every generated file.
-    if (typeof data.enabled !== 'boolean') data.enabled = false;
+    // `enabled` is only written to YAML when the user explicitly opts in to
+    // "Disable for Wizard" (enabled === false). Any other state (undefined /
+    // true) is treated as "not disabled" and is omitted from the output.
 
     // Deprecated applyFix values must never leak into newly generated YAML.
     delete data.bass;
@@ -234,7 +307,7 @@
         if (Array.isArray(value)) return value.length > 0;
         if (typeof value === 'string') return value.trim() !== '';
         if (typeof value === 'number') return Number.isFinite(value);
-        if (typeof value === 'boolean') return value === true || key === 'enabled';
+        if (typeof value === 'boolean') return key === 'enabled' ? value === false : value === true;
         return false;
       })
       .sort(([left], [right]) => left.localeCompare(right));
@@ -526,10 +599,12 @@
     humanize,
     formatDate,
     isItemBroken,
+    getItemUrl,
     isExcludedVpxFormat,
     isVpuPatchItem,
     getParentId,
     getCategoryItems,
+    sortByUpdatedDesc,
     getAssetState,
     getCoverUrl,
     normalizeArray,
@@ -543,7 +618,9 @@
     formatDateDMY,
     isMd5Hash,
     normalizeChecksumValue,
+    replacePrimaryChecksum,
     extractArchiveDirectories,
-    listArchiveEntryPaths
+    listArchiveEntryPaths,
+    cssEscape
   };
 })();

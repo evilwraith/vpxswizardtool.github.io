@@ -272,7 +272,6 @@
       record,
       selections: { ...(options.selections || {}) },
       values: migrateBuildValues({
-        enabled: false,
         ...baseValues,
         ...(options.values || {}),
         tableVPSId: record.id || ''

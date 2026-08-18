@@ -45,7 +45,10 @@
       if (checksums.length > 1) values.coloredROMPin2DMD = true;
     }
 
-    values.enabled = false;
+    // Preserve `enabled: false` from the imported YAML. Anything else
+    // (missing, or `enabled: true`) is normalised to "not disabled" and left
+    // absent so it never round-trips back into generated YAML as `enabled: true`.
+    if (values.enabled !== false) delete values.enabled;
     return { values, ignored };
   }
 

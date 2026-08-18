@@ -69,7 +69,7 @@
       'workspace', 'tableStrip', 'tableBadges', 'assetMatrix', 'changeTableBtn', 'builderSection',
       'accordionStack',
       'previewDrawer', 'previewYaml', 'previewLineCount', 'previewStatusDot', 'drawerCopyBtn',
-      'validateBtn', 'downloadNextBtn', 'helpBtn', 'recentBtn',
+      'validateBtn', 'downloadBtn', 'previewClearBtn', 'helpBtn', 'recentBtn',
       'helpDialog', 'validationDialog', 'validationBody', 'recentDialog', 'recentBody', 'clearHistoryBtn',
       'themeToggle', 'themeKnob'
     ];
@@ -291,9 +291,10 @@
     if (!config) return;
     delete state.selections[category];
     delete state.values[config.idField];
+    if (config.nsfwField && state.values[config.bundleField] !== true) delete state.values[config.nsfwField];
     state.openAssetDetails.delete(category);
     const step = WIZARD_STEPS.find(candidate => candidate.id === config.stepId);
-    if (step) clearStepData(step, { preserveId: false, preserveBundle: true, rerender: false });
+    if (step) clearStepData(step, { preserveId: false, preserveBundle: true, preserveOverride: true, rerender: false });
   }
 
   function sanitizeAssetSelections() {
@@ -339,7 +340,7 @@
     const baseValues = options.values ? {} : (state.carryValues || {});
     state.record = record;
     state.selections = options.selections ? { ...options.selections } : {};
-    state.values = migrateBuildValues({ enabled: false, ...baseValues, ...(options.values || {}), tableVPSId: record.id || '' });
+    state.values = migrateBuildValues({ ...baseValues, ...(options.values || {}), tableVPSId: record.id || '' });
     state.openAssetDetails = new Set(options.openAssetDetails || []);
     state.openSteps = new Set();
     state.activeStep = options.activeStep || state.activeStep || 'main';
@@ -364,10 +365,12 @@
     dom.workspace.hidden = !hasRecord;
     if (!hasRecord) return;
 
-    UI.renderTableStrip(dom.tableStrip, state.record, state.selections, state.values, dom.tableBadges, { onJump: activateConfigTab });
+    UI.renderTableStrip(dom.tableStrip, state.record, state.selections, state.values, dom.tableBadges, { onJump: activateConfigTab, onNsfw: handleNsfwChange });
     UI.renderAssetMatrix(dom.assetMatrix, state.record, state.selections, state.values, {
       onSelect: handleAssetSelection,
       onBundle: handleBundleChange,
+      onNsfw: handleNsfwChange,
+      onOverride: handleOverrideChange,
       onToggleDetail: toggleAssetDetail,
       isDetailOpen: category => state.openAssetDetails.has(category)
     });
@@ -391,7 +394,7 @@
       },
       getStatus: getSectionStatus,
       onChange: handleFieldChange,
-      onClear: step => clearStepData(step, { preserveId: true, preserveBundle: true })
+      onClear: step => clearStepData(step, { preserveId: true, preserveBundle: true, preserveOverride: true })
     });
   }
 
@@ -418,6 +421,7 @@
     } else {
       delete state.selections[category];
       delete state.values[config.idField];
+      if (config.nsfwField && state.values[config.bundleField] !== true) delete state.values[config.nsfwField];
       state.openAssetDetails.delete(category);
     }
 
@@ -425,11 +429,11 @@
 
     if (previous !== itemId) {
       const step = WIZARD_STEPS.find(candidate => candidate.id === config.stepId);
-      if (step) clearStepData(step, { preserveId: true, preserveBundle: true, rerender: false });
+      if (step) clearStepData(step, { preserveId: true, preserveBundle: true, preserveOverride: true, rerender: false });
     }
     if (!itemId && !state.values[config.bundleField]) {
       const step = WIZARD_STEPS.find(candidate => candidate.id === config.stepId);
-      if (step) clearStepData(step, { preserveId: false, preserveBundle: true, rerender: false });
+      if (step) clearStepData(step, { preserveId: false, preserveBundle: true, preserveOverride: true, rerender: false });
     }
 
     renderWorkspace();
@@ -439,8 +443,41 @@
   function handleBundleChange(fieldName, checked) {
     state.values[fieldName] = checked;
     const step = WIZARD_STEPS.find(candidate => candidate.bundleField === fieldName);
-    if (!checked && step && !state.selections[step.category]) {
-      clearStepData(step, { preserveId: false, preserveBundle: false, rerender: false });
+    // Bundled and Override are mutually exclusive — not native radio inputs
+    // (either can be independently unchecked, leaving both off), but turning
+    // one on always turns the other off.
+    if (checked && step?.overrideField) state.values[step.overrideField] = false;
+    if (!checked && step && !state.selections[step.category] && state.values[step.overrideField] !== true) {
+      clearStepData(step, { preserveId: false, preserveBundle: false, preserveOverride: true, rerender: false });
+      const config = Object.values(CATEGORY_CONFIG).find(candidate => candidate.bundleField === fieldName);
+      if (config?.nsfwField) delete state.values[config.nsfwField];
+    }
+    renderWorkspace();
+    markChanged();
+  }
+
+  function handleOverrideChange(fieldName, checked) {
+    state.values[fieldName] = checked;
+    const step = WIZARD_STEPS.find(candidate => candidate.overrideField === fieldName);
+    if (checked && step?.bundleField) state.values[step.bundleField] = false;
+    if (!checked && step && !state.selections[step.category] && state.values[step.bundleField] !== true) {
+      clearStepData(step, { preserveId: false, preserveBundle: true, preserveOverride: false, rerender: false });
+      const config = Object.values(CATEGORY_CONFIG).find(candidate => candidate.overrideField === fieldName);
+      if (config?.nsfwField) delete state.values[config.nsfwField];
+    }
+    renderWorkspace();
+    markChanged();
+  }
+
+  function handleNsfwChange(fieldName, checked) {
+    if (checked) state.values[fieldName] = true;
+    else delete state.values[fieldName];
+    if (fieldName === 'nsfw' && checked) {
+      // The table-level flag is exclusive: it replaces the per-asset flags,
+      // which are cleared so they never coexist with `nsfw: true` in the YAML.
+      Object.values(CATEGORY_CONFIG).forEach(config => {
+        if (config.nsfwField) delete state.values[config.nsfwField];
+      });
     }
     renderWorkspace();
     markChanged();
@@ -456,6 +493,7 @@
     if (step.always) return true;
     if (step.category && state.selections[step.category]) return true;
     if (step.bundleField && state.values[step.bundleField] === true) return true;
+    if (step.overrideField && state.values[step.overrideField] === true) return true;
     return false;
   }
 
@@ -471,16 +509,22 @@
     state.values[key] = value;
 
     if (key === 'coloredROMPin2DMD' && previous !== value) {
-      delete state.values.coloredROMChecksum;
-      delete state.values.coloredROMChecksumSecondary;
       const sources = { ...(state.values.__checksumSources || {}) };
-      delete sources.coloredROMChecksum;
+      // A .pal checksum is valid in both modes, so it survives the toggle;
+      // anything else (or a typed checksum with unknown provenance) is
+      // cleared along with the secondary slot.
+      const keepPrimary = String(sources.coloredROMChecksum?.extension || '').toLowerCase() === '.pal';
+      if (!keepPrimary) {
+        delete state.values.coloredROMChecksum;
+        delete sources.coloredROMChecksum;
+      }
+      delete state.values.coloredROMChecksumSecondary;
       delete sources.coloredROMChecksumSecondary;
       state.values.__checksumSources = sources;
       UI.syncConditionalFields(state.values);
     }
 
-    UI.renderTableStrip(dom.tableStrip, state.record, state.selections, state.values, dom.tableBadges, { onJump: activateConfigTab });
+    UI.renderTableStrip(dom.tableStrip, state.record, state.selections, state.values, dom.tableBadges, { onJump: activateConfigTab, onNsfw: handleNsfwChange });
     updatePreview();
     updateValidationSummary();
     refreshTabStatuses();
@@ -490,6 +534,7 @@
   function clearStepData(step, options = {}) {
     const preserveId = options.preserveId === true;
     const preserveBundle = options.preserveBundle === true;
+    const preserveOverride = options.preserveOverride === true;
 
     const checksumSources = { ...(state.values.__checksumSources || {}) };
     step.fields.forEach(field => {
@@ -508,6 +553,7 @@
     else delete state.values.__checksumSources;
     if (step.id === 'pup') delete state.values.__pupArchiveDirectories;
     if (!preserveBundle && step.bundleField) delete state.values[step.bundleField];
+    if (!preserveOverride && step.overrideField) delete state.values[step.overrideField];
 
     if (options.rerender !== false) {
       renderWorkspace();
@@ -517,15 +563,23 @@
 
   function pruneDisabledStepData() {
     WIZARD_STEPS.forEach(step => {
-      if (!isStepEnabled(step)) clearStepData(step, { preserveId: false, preserveBundle: true, rerender: false });
+      if (!isStepEnabled(step)) clearStepData(step, { preserveId: false, preserveBundle: true, preserveOverride: true, rerender: false });
     });
+  }
+
+  function getExtendedStepErrors(stepId) {
+    const featureErrors = window.VPS_FEATURE_VALIDATION?.errors?.() || [];
+    const v090Errors = window.VPS_V090_VALIDATION?.errors?.() || [];
+    return [...featureErrors, ...v090Errors].filter(entry => entry.stepId === stepId);
   }
 
   function getSectionStatus(step) {
     if (!isStepEnabled(step)) return { label: 'Not included', className: 'disabled' };
     const stepErrors = state.validation.errors.filter(entry => entry.stepId === step.id);
     const stepWarnings = state.validation.warnings.filter(entry => entry.stepId === step.id);
-    if (stepErrors.length) return { label: `${stepErrors.length} error${stepErrors.length === 1 ? '' : 's'}`, className: 'error' };
+    const extendedErrorCount = getExtendedStepErrors(step.id).length;
+    const errorCount = stepErrors.length + extendedErrorCount;
+    if (errorCount) return { label: `${errorCount} error${errorCount === 1 ? '' : 's'}`, className: 'error' };
     if (stepWarnings.length) return { label: `${stepWarnings.length} warning${stepWarnings.length === 1 ? '' : 's'}`, className: 'warning' };
 
     const keys = [];
@@ -604,6 +658,13 @@
       state.selections.b2sFiles || hasText(state.values.backglassUrlOverride) || state.values.backglassBundled === true
     );
     validateChecksum('backglassChecksum', 'b2s', 'Backglass Checksum', { required: backglassOffered });
+    if (hasText(state.values.backglassUrlOverride) && !hasText(state.values.backglassNotes)) {
+      addError('b2s', 'Backglass Notes are required', 'Add Backglass Notes when using Backglass URL Override.');
+    }
+    // Bundled means the Backglass ships inside the table's own download, so
+    // no external URL/Authors/Image Override is needed — only Notes saying
+    // where to find it. Override (no VPS entry at all) still requires the
+    // full Advanced Config set via the generic overrideRequiredFields loop.
     if (state.values.backglassBundled === true && !hasText(state.values.backglassNotes)) {
       addError('b2s', 'Bundled Backglass needs notes', 'Describe the bundled Backglass and where it is located.');
     }
@@ -612,24 +673,34 @@
       state.selections.romFiles || hasText(state.values.romUrlOverride) || state.values.romBundled === true
     );
     validateChecksum('romChecksum', 'rom', 'ROM Checksum', { required: romOffered });
-    if (state.values.romBundled === true && !hasText(state.values.romNotes)) {
-      addError('rom', 'Bundled ROM needs notes', 'Describe the bundled ROM and where it is located.');
-    }
     if (hasText(state.values.romUrlOverride) && state.values.romVPSId) {
       addError('rom', 'ROM ID conflicts with URL override', 'Use either ROM ID or ROM URL Override, not both.');
     }
     if (hasText(state.values.romUrlOverride) && !hasText(state.values.romVersionOverride)) {
       addError('rom', 'ROM version override is required', 'Add ROM Version Override when using ROM URL Override.');
     }
+    if (hasText(state.values.romUrlOverride) && !hasText(state.values.romNotes)) {
+      addError('rom', 'ROM Notes are required', 'Add ROM Notes when using ROM URL Override.');
+    }
+    // Bundled means the ROM ships inside the table's own download — no
+    // external URL/Version Override needed, only Notes. Override (no VPS
+    // entry) still requires the full set via overrideRequiredFields below.
+    if (state.values.romBundled === true && !hasText(state.values.romNotes)) {
+      addError('rom', 'Bundled ROM needs notes', 'Describe the bundled ROM and where it is located.');
+    }
 
     const colorOffered = Boolean(
       state.selections.altColorFiles || hasText(state.values.coloredROMUrlOverride) || state.values.coloredROMBundled === true
     );
-    const colorPrimary = String(state.values.coloredROMChecksum || '').trim();
+    const colorRawValue = state.values.coloredROMChecksum;
+    const colorPrimary = String(Array.isArray(colorRawValue) ? (colorRawValue[0] ?? '') : (colorRawValue ?? '')).trim();
     const colorSecondary = String(state.values.coloredROMChecksumSecondary || '').trim();
+    // Outside PAL/VNI mode, coloredROMChecksum may hold additional checksums
+    // added via the checksum-additional modal — pass it through as-is
+    // (string or array) instead of collapsing to just the primary value.
     const colorValue = state.values.coloredROMPin2DMD === true
       ? [colorPrimary, colorSecondary].filter(Boolean)
-      : colorPrimary;
+      : colorRawValue;
     validateChecksum('coloredROMChecksum', 'coloredRom', 'Color ROM Checksum', {
       required: colorOffered,
       value: colorValue
@@ -637,17 +708,58 @@
     if (state.values.coloredROMPin2DMD === true && (!colorPrimary || !colorSecondary)) {
       addError('coloredRom', 'PAL/VNI requires two checksums', 'Add the .pal checksum and the .vni checksum.');
     }
+    if (hasText(state.values.coloredROMUrlOverride) && !hasText(state.values.coloredROMNotes)) {
+      addError('coloredRom', 'Color ROM Notes are required', 'Add Color ROM Notes when using Color ROM URL Override.');
+    }
+    // Bundled means the Color ROM ships inside the table's own download —
+    // no external URL/Version Override needed, only Notes. Override (no
+    // VPS entry) still requires the full set via overrideRequiredFields.
     if (state.values.coloredROMBundled === true && !hasText(state.values.coloredROMNotes)) {
       addError('coloredRom', 'Bundled Color ROM needs notes', 'Describe the bundled Color ROM and where it is located.');
     }
 
-    const pupOffered = Boolean(state.selections.pupPackFiles || hasText(state.values.pupFileUrl));
+    const pupOffered = Boolean(
+      state.selections.pupPackFiles || hasText(state.values.pupFileUrl) || state.values.pupBundled === true || state.values.pupOverride === true
+    );
     validateChecksum('pupChecksum', 'pup', 'PUP Pack Checksum', { required: pupOffered });
-    if (isStepEnabled(WIZARD_STEPS.find(step => step.id === 'pup')) && state.values.pupRequired === true && !hasText(state.values.pupFileUrl) && !state.selections.pupPackFiles) {
-      addError('pup', 'Required PUP Pack needs a source', 'Select a PUP Pack VPS entry or add the PUP Pack URL.');
+    if (state.values.pupBundled === true && !hasText(state.values.pupNotes)) {
+      addError('pup', 'Bundled PUP Pack needs notes', 'Describe the bundled PUP Pack and where it is located.');
+    }
+    if (isStepEnabled(WIZARD_STEPS.find(step => step.id === 'pup'))) {
+      [
+        ['pupVersion', 'PUP Pack Version'],
+        ['pupArchiveRoot', 'PUP Pack Archive Root'],
+        ['pupArchiveFormat', 'PUP Pack Archive Format']
+      ].forEach(([key, label]) => {
+        if (!hasText(state.values[key])) {
+          addError('pup', `${label} is required`, `Add ${label} before copying or downloading.`);
+        }
+      });
     }
 
     validateChecksum('diffChecksum', 'vpuPatch', 'VPU Patch Checksum');
+    if (hasText(state.values.diffUrlOverride) && !hasText(state.values.diffNotes)) {
+      addError('vpuPatch', 'Patch Notes are required', 'Add Patch Notes when using Patch URL Override.');
+    }
+    // Bundled means the VPU Patch ships inside the table's own download —
+    // no external URL/Authors/Version Override needed, only Notes. Override
+    // (no VPS entry) still requires the full set via overrideRequiredFields.
+    if (state.values.diffBundled === true && !hasText(state.values.diffNotes)) {
+      addError('vpuPatch', 'Bundled VPU Patch needs notes', 'Describe the bundled VPU Patch and where it is located.');
+    }
+
+    // Override unlocks a tab without a VPS ID; in exchange every field that
+    // would otherwise have come from the VPS DB (each step's declared
+    // overrideRequiredFields — its Advanced Config overrides, plus PUP
+    // Notes) must be filled in by hand.
+    WIZARD_STEPS.forEach(step => {
+      if (!step.overrideField || state.values[step.overrideField] !== true) return;
+      (step.overrideRequiredFields || []).forEach(key => {
+        if (hasText(state.values[key])) return;
+        const label = step.fields.find(field => field.yml_field === key)?.name || key;
+        addError(step.id, `${label} is required`, `Add ${label} — Override requires every Advanced Config field since there is no VPS entry to pull it from.`);
+      });
+    });
 
     const yamlLines = state.yaml.split('\n');
     const longLine = yamlLines.find((line, index) => {
@@ -676,7 +788,7 @@
       const step = WIZARD_STEPS.find(candidate => candidate.id === tab.dataset.step);
       if (!step) return;
       const status = getSectionStatus(step);
-      tab.classList.remove('has-error', 'has-warning');
+      tab.classList.remove('has-error', 'has-warning', 'has-ready');
       let marker = tab.querySelector('.config-tab-alert');
       if (status.className === 'error' || status.className === 'warning') {
         tab.classList.add(`has-${status.className}`);
@@ -692,6 +804,7 @@
         marker?.remove();
         tab.removeAttribute('title');
         tab.setAttribute('aria-label', step.label);
+        if (status.className === 'ready') tab.classList.add('has-ready');
       }
     });
   }
@@ -768,10 +881,11 @@
     dom.changeTableBtn.addEventListener('click', () => startNext({ clearDraft: true, status: 'Build cleared. Search for another table.' }));
     dom.drawerCopyBtn.addEventListener('click', () => copyYaml(dom.drawerCopyBtn));
     dom.validateBtn.addEventListener('click', showValidationDialog);
-    dom.downloadNextBtn.addEventListener('click', downloadAndStartNext);
+    dom.downloadBtn.addEventListener('click', downloadYaml);
+    dom.previewClearBtn.addEventListener('click', () => startNext({ clearDraft: true, status: 'Build cleared. Search for another table.' }));
   }
 
-  function downloadAndStartNext() {
+  function downloadYaml() {
     validateBuild();
     if (state.validation.errors.length) {
       showValidationDialog();
@@ -782,7 +896,7 @@
     downloadText(state.yaml, filename);
     state.carryValues = extractPresetValues(state.values);
     addRecentBuild('Downloaded', filename);
-    startNext({ clearDraft: true, status: 'YML downloaded and build cleared. Ready for the next table.' });
+    setSearchStatus(`${filename} downloaded.`);
   }
 
   function startNext({ clearDraft = false, status = 'Search for another table.' } = {}) {
@@ -790,6 +904,11 @@
     state.record = null;
     state.selections = {};
     state.values = {};
+    // Clear is an explicit full reset — unlike a plain Download (which
+    // intentionally leaves carryValues in place so the next similar table
+    // keeps FPS/Testers/etc.), it must not let those carry into whatever
+    // gets searched next.
+    state.carryValues = {};
     state.openAssetDetails.clear();
     state.validation = { errors: [], warnings: [] };
     updatePreview();
@@ -980,7 +1099,7 @@
 
       if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
         event.preventDefault();
-        if (event.shiftKey) downloadAndStartNext();
+        if (event.shiftKey) downloadYaml();
         else showValidationDialog();
       }
     });

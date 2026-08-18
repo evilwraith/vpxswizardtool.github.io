@@ -1,20 +1,5 @@
 /* Production field presentation: compact tutorials and placeholder-only new controls. */
 
-/* Tutorials occupy roughly one-third of their previous full-row width. */
-.advanced-grid-main .field-main-tutorial {
-  width: 34%;
-  max-width: 34%;
-  min-width: 0;
-  justify-self: start;
-}
-
-.advanced-grid-main .field-main-tutorial select {
+.field-main-tutorial select {
   width: 100%;
-}
-
-@media (max-width: 760px) {
-  .advanced-grid-main .field-main-tutorial {
-    width: 100%;
-    max-width: none;
-  }
 }

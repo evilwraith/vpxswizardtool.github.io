@@ -16,20 +16,47 @@
       if (!entry || typeof entry !== 'object') return null;
       const normalized = {
         vpsId: String(entry.vpsId || '').trim(),
-        checksum: String(entry.checksum || '').trim(),
+        checksum: String(entry.checksum || '').trim().toUpperCase(),
         versionOverride: String(entry.versionOverride || '').trim(),
         urlOverride: String(entry.urlOverride || '').trim()
       };
-      return normalized.vpsId ? normalized : null;
+      // vpsId is legitimately empty when ROM Override is active (no VPS DB
+      // entry to pull one from — see additionalRomsController.js), so a
+      // real entry is one with EITHER a vpsId or a checksum, not vpsId alone.
+      return (normalized.vpsId || normalized.checksum) ? normalized : null;
     }).filter(Boolean);
+  }
+
+  const CHECKSUM_KEYS = [
+    'vpxChecksum', 'backglassChecksum', 'romChecksum', 'coloredROMChecksum',
+    'coloredROMChecksumSecondary', 'pupChecksum', 'diffChecksum', 'altSoundChecksum'
+  ];
+
+  function uppercaseChecksums(data) {
+    CHECKSUM_KEYS.forEach(key => {
+      const value = data[key];
+      if (typeof value === 'string') data[key] = value.toUpperCase();
+      else if (Array.isArray(value)) data[key] = value.map(item => String(item).toUpperCase());
+    });
   }
 
   function prepareData(values, omit) {
     const data = { ...values };
 
-    if (typeof data.enabled !== 'boolean') data.enabled = false;
+    // `enabled` is only written to YAML when the user opts in to "Disable for
+    // Wizard" (enabled === false). Any other state is omitted from output.
     delete data.bass;
     delete data.applyFixes;
+
+    uppercaseChecksums(data);
+
+    // The table-level NSFW flag is exclusive: when set, per-asset NSFW keys
+    // must never appear alongside it (covers imported YAML that has both).
+    if (data.nsfw === true) {
+      Object.values(window.VPS_YML_FIELDS?.CATEGORY_CONFIG || {}).forEach(config => {
+        if (config.nsfwField) delete data[config.nsfwField];
+      });
+    }
 
     const primaryColorChecksum = Array.isArray(data.coloredROMChecksum)
       ? data.coloredROMChecksum[0]
@@ -45,8 +72,15 @@
       else delete data.coloredROMChecksum;
     } else {
       delete data.coloredROMPin2DMD;
-      if (primaryColorChecksum) data.coloredROMChecksum = String(primaryColorChecksum).trim();
-      else delete data.coloredROMChecksum;
+      // Outside PAL/VNI mode any entries beyond index 0 are "additional"
+      // checksums from the checksum-additional modal, not the PAL/VNI
+      // secondary slot — preserve them instead of collapsing to primary only.
+      const checksums = (Array.isArray(data.coloredROMChecksum) ? data.coloredROMChecksum : [data.coloredROMChecksum])
+        .map(value => String(value || '').trim())
+        .filter(Boolean);
+      if (!checksums.length) delete data.coloredROMChecksum;
+      else if (checksums.length === 1) data.coloredROMChecksum = checksums[0];
+      else data.coloredROMChecksum = checksums;
     }
     delete data.coloredROMChecksumSecondary;
 
@@ -60,16 +94,6 @@
     if (altSoundChecksums.length === 1) data.altSoundChecksum = altSoundChecksums[0];
     else if (altSoundChecksums.length > 1) data.altSoundChecksum = altSoundChecksums;
     else delete data.altSoundChecksum;
-
-    const hasAltSound = Boolean(
-      data.altSoundVPSId
-      || data.altSoundUrlOverride
-      || data.altSoundBundled === true
-      || data.altSoundChecksum
-    );
-    if (hasAltSound && !String(data.altSoundArchiveFormat || '').trim()) {
-      data.altSoundArchiveFormat = 'zip';
-    }
 
     const additionalRoms = normalizeAdditionalRoms(data.additionalRoms);
     if (additionalRoms.length) data.additionalRoms = additionalRoms;
@@ -96,13 +120,26 @@
     if (Array.isArray(value)) return value.length > 0;
     if (typeof value === 'string') return value.trim() !== '';
     if (typeof value === 'number') return Number.isFinite(value);
-    if (typeof value === 'boolean') return value === true || key === 'enabled';
+    if (typeof value === 'boolean') return key === 'enabled' ? value === false : value === true;
     if (value && typeof value === 'object') return Object.keys(value).length > 0;
     return false;
   }
 
+  // Derived from fields.js's declared field types so any field holding a URL
+  // (not just ones suffixed UrlOverride/FileUrl) gets the same treatment —
+  // falls back to the old suffix heuristic if fields.js hasn't loaded yet.
+  const URL_FIELD_NAMES = (() => {
+    const names = new Set();
+    (window.VPS_YML_FIELDS?.WIZARD_STEPS || []).forEach(step => {
+      (step.fields || []).forEach(field => {
+        if (field.type === 'url') names.add(field.yml_field);
+      });
+    });
+    return names;
+  })();
+
   function isUrlField(name) {
-    return name.endsWith('UrlOverride') || name.endsWith('FileUrl') || name === 'urlOverride';
+    return URL_FIELD_NAMES.has(name) || name.endsWith('UrlOverride') || name.endsWith('FileUrl') || name === 'urlOverride';
   }
 
   function serializeScalar(name, value, indent = '') {
@@ -112,7 +149,14 @@
 
     const cleanValue = cleanYamlString(value);
     if (isUrlField(name)) {
-      const prefix = cleanValue.length > 120
+      // The yamllint rule this comment suppresses checks the full rendered
+      // line, not the URL value alone — a value well under 120 characters
+      // can still push `name: "value"` over the limit once the key and
+      // quoting overhead are added. Compare the actual line length so the
+      // comment (and therefore our own >120-char check below) lines up with
+      // what real yamllint would flag.
+      const renderedLength = indent.length + name.length + 4 + cleanValue.length;
+      const prefix = renderedLength > 120
         ? `${indent}# yamllint disable-line rule:line-length\n`
         : '';
       return `${prefix}${indent}${name}: "${cleanValue.replace(/\n+/g, ' ')}"\n`;

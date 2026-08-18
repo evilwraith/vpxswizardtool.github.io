@@ -16,9 +16,14 @@
   let toast = null;
   let toastTitle = null;
   let toastMessage = null;
+  let toastActions = null;
   let toastHideTimer = null;
   let toastRemoveTimer = null;
   let importing = false;
+  // "Always this session" choice for outdated-field removal; resets on reload.
+  let alwaysRemoveOutdatedFields = false;
+  let pendingPromptResolve = null;
+  let pendingPromptFallback = null;
 
   function hasCurrentBuild() {
     const workspace = document.getElementById('workspace');
@@ -207,19 +212,27 @@
   }
 
   function allSupportedKeys() {
-    const keys = new Set(['tableVPSId', 'enabled']);
+    const keys = new Set(['tableVPSId', 'enabled', 'nsfw']);
     WIZARD_STEPS.forEach(step => {
       (step.fields || []).forEach(field => {
         keys.add(field.yml_field);
         (field.items || []).forEach(item => keys.add(item.yml_field));
       });
       if (step.bundleField) keys.add(step.bundleField);
+      if (step.overrideField) keys.add(step.overrideField);
     });
     Object.values(CATEGORY_CONFIG).forEach(config => {
       if (config.idField) keys.add(config.idField);
       if (config.bundleField) keys.add(config.bundleField);
+      if (config.nsfwField) keys.add(config.nsfwField);
+      if (config.overrideField) keys.add(config.overrideField);
     });
     return keys;
+  }
+
+  function valuePresent(value) {
+    if (Array.isArray(value)) return value.length > 0;
+    return typeof value === 'string' ? value.trim() !== '' : value !== undefined && value !== null && value !== '';
   }
 
   function normalizeImportedData(parsed) {
@@ -246,7 +259,38 @@
       if (checksums.length > 1) values.coloredROMPin2DMD = true;
     }
 
-    values.enabled = false;
+    // Checksums are uppercase throughout the app; normalise imported ones so
+    // the fields and regenerated YAML agree.
+    [
+      'vpxChecksum', 'backglassChecksum', 'romChecksum', 'coloredROMChecksum',
+      'coloredROMChecksumSecondary', 'pupChecksum', 'diffChecksum', 'altSoundChecksum'
+    ].forEach(key => {
+      const value = values[key];
+      if (typeof value === 'string') values[key] = value.toUpperCase();
+      else if (Array.isArray(value)) values[key] = value.map(item => String(item).toUpperCase());
+    });
+
+    // Preserve `enabled: false` from the imported YAML (checkbox will render
+    // as checked). Anything else (missing, or `enabled: true`) is normalised
+    // to "not disabled" and left absent from `values`, so it never round-trips
+    // back into the generated YAML as `enabled: true`.
+    if (values.enabled !== false) delete values.enabled;
+
+    // Override is deliberately never written to the YAML (OMIT_FROM_YAML) —
+    // it's a builder-only convenience, so a table exported while in Override
+    // mode carries no direct signal of that on re-import. Re-infer it: no
+    // VPS ID for the category, not Bundled, but at least one of the step's
+    // overrideRequiredFields has a value.
+    Object.values(CATEGORY_CONFIG).forEach(config => {
+      if (!config.overrideField) return;
+      const step = WIZARD_STEPS.find(candidate => candidate.id === config.stepId);
+      if (!step?.overrideRequiredFields?.length) return;
+      const hasId = valuePresent(values[config.idField]);
+      const isBundled = Boolean(step.bundleField) && values[step.bundleField] === true;
+      const hasOverrideData = step.overrideRequiredFields.some(key => valuePresent(values[key]));
+      if (!hasId && !isBundled && hasOverrideData) values[config.overrideField] = true;
+    });
+
     return { values, ignored };
   }
 
@@ -278,9 +322,22 @@
     close.className = 'vps-db-toast-close';
     close.setAttribute('aria-label', 'Dismiss YML import status');
     close.textContent = '×';
-    close.addEventListener('click', hideToast);
+    close.addEventListener('click', () => {
+      if (pendingPromptResolve) {
+        const resolve = pendingPromptResolve;
+        const fallback = pendingPromptFallback;
+        pendingPromptResolve = null;
+        pendingPromptFallback = null;
+        resolve(fallback);
+        return;
+      }
+      hideToast();
+    });
 
-    toast.append(indicator, copy, close);
+    toastActions = document.createElement('div');
+    toastActions.className = 'yml-import-toast-actions';
+
+    toast.append(indicator, copy, close, toastActions);
     document.body.appendChild(toast);
     return toast;
   }
@@ -299,9 +356,14 @@
     ensureToast();
     window.clearTimeout(toastHideTimer);
     window.clearTimeout(toastRemoveTimer);
+    pendingPromptResolve = null;
+    pendingPromptFallback = null;
 
     const dbToast = document.getElementById('vpsDbToast');
     toast.classList.toggle('is-stacked', Boolean(dbToast && !dbToast.hidden && dbToast.classList.contains('is-visible')));
+    toast.classList.remove('has-actions');
+    toast.setAttribute('role', 'status');
+    toastActions.replaceChildren();
     toast.dataset.state = state === 'loading' ? 'checking' : state === 'success' ? 'updated' : 'error';
     toastTitle.textContent = title;
     toastMessage.textContent = message;
@@ -314,6 +376,87 @@
     if (state !== 'loading') {
       toastHideTimer = window.setTimeout(hideToast, state === 'error' ? 6500 : 4600);
     }
+  }
+
+  // Shows a sticky toast with action buttons and resolves with the clicked
+  // choice's value. Dismissing (the × button, or Escape) resolves with the
+  // first choice's value, treated as the safe/default outcome.
+  function promptToast(title, message, choices) {
+    ensureToast();
+    window.clearTimeout(toastHideTimer);
+    window.clearTimeout(toastRemoveTimer);
+
+    return new Promise(resolve => {
+      const dbToast = document.getElementById('vpsDbToast');
+      toast.classList.toggle('is-stacked', Boolean(dbToast && !dbToast.hidden && dbToast.classList.contains('is-visible')));
+      toast.classList.add('has-actions');
+      toast.setAttribute('role', 'alertdialog');
+      toast.dataset.state = 'error';
+      toastTitle.textContent = title;
+      toastMessage.textContent = message;
+      toastActions.replaceChildren();
+
+      let settled = false;
+      const finish = value => {
+        if (settled) return;
+        settled = true;
+        pendingPromptResolve = null;
+        pendingPromptFallback = null;
+        hideToast();
+        resolve(value);
+      };
+
+      choices.forEach(choice => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = `text-btn${choice.variant ? ` ${choice.variant}` : ''}`;
+        button.textContent = choice.label;
+        button.addEventListener('click', () => finish(choice.value));
+        toastActions.appendChild(button);
+      });
+
+      pendingPromptResolve = finish;
+      pendingPromptFallback = choices[0]?.value ?? null;
+
+      toast.hidden = false;
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => toast.classList.add('is-visible'));
+      });
+    });
+  }
+
+  function truncateKeyList(keys, limit = 6) {
+    if (keys.length <= limit) return keys.join(', ');
+    return `${keys.slice(0, limit).join(', ')} (+${keys.length - limit} more)`;
+  }
+
+  // Two-step confirmation for outdated/unsupported YML keys: first asks
+  // whether to strip them and continue or cancel the import outright; if the
+  // user chooses to strip them, asks whether that choice should apply just
+  // this once or automatically for every import in the rest of the session.
+  async function confirmOutdatedFields(fileName, ignored) {
+    if (alwaysRemoveOutdatedFields) return true;
+
+    const removeChoice = await promptToast(
+      `${ignored.length} outdated field${ignored.length === 1 ? '' : 's'} found`,
+      `${fileName} includes fields VPXS no longer supports: ${truncateKeyList(ignored)}. Remove them and continue loading?`,
+      [
+        { label: 'Cancel', value: 'cancel', variant: 'danger-btn' },
+        { label: 'Remove', value: 'remove', variant: 'preview-primary' }
+      ]
+    );
+    if (removeChoice !== 'remove') return false;
+
+    const scopeChoice = await promptToast(
+      'Remove outdated fields',
+      'Strip them from this file only, or automatically for every YML you open this session?',
+      [
+        { label: 'Just this once', value: 'once' },
+        { label: 'Always this session', value: 'always', variant: 'preview-primary' }
+      ]
+    );
+    if (scopeChoice === 'always') alwaysRemoveOutdatedFields = true;
+    return true;
   }
 
   function waitFor(predicate, message, timeout = IMPORT_TIMEOUT_MS) {
@@ -444,6 +587,22 @@
         await nextPaint();
       }
     }
+
+    // Override is inferred in normalizeImportedData (never a literal YAML
+    // key) — click the checkbox the same way Bundled's is clicked above, so
+    // the tab unlocks before loadImportedFields tries to fill its fields.
+    for (const [category, config] of Object.entries(CATEGORY_CONFIG)) {
+      if (!config.overrideField || values[config.overrideField] !== true) continue;
+      const checkbox = await waitFor(
+        () => document.querySelector(`#assetMatrix .asset-row[data-category="${category}"] .override-toggle input`),
+        `The ${config.label} override option is unavailable.`
+      );
+      if (!checkbox.checked) {
+        checkbox.checked = true;
+        checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+        await nextPaint();
+      }
+    }
   }
 
   function fieldValueForControl(field, value) {
@@ -453,12 +612,17 @@
   }
 
   async function setField(field, value) {
-    if (field.readonly || field.disabled || value === undefined) return;
+    // invertBoolean fields (Wizard Disabled backed by `enabled`) must be
+    // driven even when the key is absent from the YML: absence means "not
+    // disabled", which has to override the checked-by-default checkbox.
+    if (field.readonly || field.disabled || (value === undefined && !field.invertBoolean)) return;
     const control = document.getElementById(`field-${field.yml_field}`);
     if (!control || control.disabled) return;
 
     if (field.type === 'bool') {
-      const checked = value === true || String(value).toLowerCase() === 'true';
+      const checked = field.invertBoolean
+        ? (value === false || String(value).toLowerCase() === 'false')
+        : (value === true || String(value).toLowerCase() === 'true');
       if (control.checked !== checked) {
         control.checked = checked;
         control.dispatchEvent(new Event('change', { bubbles: true }));
@@ -532,6 +696,15 @@
       const text = await file.text();
       const parsed = parseFlatYaml(text);
       const { values, ignored } = normalizeImportedData(parsed);
+
+      if (ignored.length) {
+        const proceed = await confirmOutdatedFields(file.name, ignored);
+        if (!proceed) {
+          showToast('error', 'Import cancelled', `${file.name} was not loaded because it contains outdated fields.`);
+          return;
+        }
+      }
+
       const tableId = String(values.tableVPSId ?? '').trim();
       const vpxId = String(values.vpxVPSId ?? '').trim();
 
@@ -547,7 +720,7 @@
       await loadImportedFields(values);
 
       const ignoredMessage = ignored.length
-        ? ` Loaded successfully; ${ignored.length} unsupported field${ignored.length === 1 ? ' was' : 's were'} skipped.`
+        ? ` Loaded successfully; ${ignored.length} outdated field${ignored.length === 1 ? ' was' : 's were'} removed.`
         : ' The file is ready to continue editing.';
       showToast('success', 'YML loaded for editing', `${file.name}.${ignoredMessage}`);
     } catch (error) {
@@ -565,6 +738,15 @@
     dropZone = document.getElementById('ymlImportDrop');
     fileInput = document.getElementById('ymlImportInput');
     if (!dropZone || !fileInput) return;
+
+    document.addEventListener('keydown', event => {
+      if (event.key !== 'Escape' || !pendingPromptResolve) return;
+      const resolve = pendingPromptResolve;
+      const fallback = pendingPromptFallback;
+      pendingPromptResolve = null;
+      pendingPromptFallback = null;
+      resolve(fallback);
+    });
 
     fileInput.addEventListener('change', () => {
       const file = fileInput.files?.[0];

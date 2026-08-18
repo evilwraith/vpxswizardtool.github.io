@@ -2,6 +2,7 @@
   'use strict';
 
   const UI = window.VPS_UI;
+  const utils = window.VPS_UTILS;
   if (!UI) return;
 
   const originalRenderTableStrip = UI.renderTableStrip.bind(UI);
@@ -57,7 +58,12 @@
       errors.set(fieldName, messages);
     };
     const validateChecksum = (fieldName, label, { required = false } = {}) => {
-      const value = String(values[fieldName] || '').trim();
+      // This dot mirrors what the visible input shows — only the primary
+      // checksum (index 0). Additional entries (added via the
+      // checksum-additional modal) are validated separately, in that modal
+      // and in main.js's blocking validateBuild().
+      const raw = values[fieldName];
+      const value = String(Array.isArray(raw) ? (raw[0] ?? '') : (raw ?? '')).trim();
       if (required && !value) add(fieldName, `${label} is required.`);
       else if (value && !isMd5(value)) add(fieldName, `${label} must be a 32-character MD5 value.`);
     };
@@ -79,15 +85,18 @@
         break;
       case 'b2s':
         validateChecksum('backglassChecksum', 'Backglass Checksum', { required: true });
+        if (hasText(values.backglassUrlOverride) && !hasText(values.backglassNotes)) {
+          add('backglassNotes', 'Backglass Notes are required when using Backglass URL Override.');
+        }
+        // Bundled means it ships inside the table's own download — no
+        // external URL/Authors/Image Override needed, only Notes. Override
+        // (no VPS entry) still requires the full set via the generic loop.
         if (values.backglassBundled === true && !hasText(values.backglassNotes)) {
           add('backglassNotes', 'Bundled Backglass entries require notes.');
         }
         break;
       case 'rom':
         validateChecksum('romChecksum', 'ROM Checksum', { required: true });
-        if (values.romBundled === true && !hasText(values.romNotes)) {
-          add('romNotes', 'Bundled ROM entries require notes.');
-        }
         if (hasText(values.romUrlOverride) && hasText(values.romVPSId)) {
           add('romVPSId', 'ROM VPS ID conflicts with ROM URL Override.');
           add('romUrlOverride', 'Use either ROM VPS ID or ROM URL Override, not both.');
@@ -95,31 +104,66 @@
         if (hasText(values.romUrlOverride) && !hasText(values.romVersionOverride)) {
           add('romVersionOverride', 'ROM Version Override is required when using a URL override.');
         }
+        if (hasText(values.romUrlOverride) && !hasText(values.romNotes)) {
+          add('romNotes', 'ROM Notes are required when using ROM URL Override.');
+        }
+        // Bundled means it ships inside the table's own download — no
+        // external URL/Version Override needed, only Notes.
+        if (values.romBundled === true && !hasText(values.romNotes)) {
+          add('romNotes', 'Bundled ROM entries require notes.');
+        }
         break;
       case 'coloredRom': {
         validateChecksum('coloredROMChecksum', 'Color ROM Checksum', { required: true });
         if (values.coloredROMPin2DMD === true) {
           validateChecksum('coloredROMChecksumSecondary', 'Color ROM VNI Checksum', { required: true });
         }
+        if (hasText(values.coloredROMUrlOverride) && !hasText(values.coloredROMNotes)) {
+          add('coloredROMNotes', 'Color ROM Notes are required when using Color ROM URL Override.');
+        }
+        // Bundled means it ships inside the table's own download — no
+        // external URL/Version Override needed, only Notes.
         if (values.coloredROMBundled === true && !hasText(values.coloredROMNotes)) {
           add('coloredROMNotes', 'Bundled Color ROM entries require notes.');
         }
         break;
       }
       case 'pup': {
-        const hasSource = hasText(values.pupVPSId) || hasText(values.pupFileUrl);
-        validateChecksum('pupChecksum', 'PUP Pack Checksum', { required: hasSource });
-        if (values.pupRequired === true && !hasSource) {
-          add('pupVPSId', 'A required PUP Pack needs a VPS entry or file URL.');
-          add('pupFileUrl', 'A required PUP Pack needs a VPS entry or file URL.');
+        validateChecksum('pupChecksum', 'PUP Pack Checksum', { required: true });
+        if (values.pupBundled === true && !hasText(values.pupNotes)) {
+          add('pupNotes', 'Bundled PUP Pack entries require notes.');
         }
+        if (!hasText(values.pupVersion)) add('pupVersion', 'PUP Pack Version is required.');
+        if (!hasText(values.pupArchiveRoot)) add('pupArchiveRoot', 'PUP Pack Archive Root is required.');
+        if (!hasText(values.pupArchiveFormat)) add('pupArchiveFormat', 'PUP Pack Archive Format is required.');
         break;
       }
       case 'vpuPatch':
         validateChecksum('diffChecksum', 'VPU Patch Checksum');
+        if (hasText(values.diffUrlOverride) && !hasText(values.diffNotes)) {
+          add('diffNotes', 'Patch Notes are required when using Patch URL Override.');
+        }
+        // Bundled means it ships inside the table's own download — no
+        // external URL/Authors/Version Override needed, only Notes.
+        if (values.diffBundled === true && !hasText(values.diffNotes)) {
+          add('diffNotes', 'Bundled VPU Patch entries require notes.');
+        }
         break;
       default:
         break;
+    }
+
+    // Override unlocks a tab without a VPS ID; every field the step declares
+    // in overrideRequiredFields (its Advanced Config overrides, plus PUP
+    // Notes) becomes required in exchange. Generic so it stays in sync with
+    // fields.js instead of duplicating each step's field list here.
+    if (step.overrideField && values[step.overrideField] === true) {
+      (step.overrideRequiredFields || []).forEach(key => {
+        if (!hasText(values[key])) {
+          const label = step.fields.find(field => field.yml_field === key)?.name || key;
+          add(key, `${label} is required when Override is enabled.`);
+        }
+      });
     }
 
     return errors;
@@ -134,8 +178,8 @@
   }
 
   function findFieldWrapper(container, fieldName) {
-    const control = container?.querySelector(`#field-${CSS.escape(fieldName)}`)
-      || container?.querySelector(`[name="${CSS.escape(fieldName)}"]`);
+    const control = container?.querySelector(`#field-${utils.cssEscape(fieldName)}`)
+      || container?.querySelector(`[name="${utils.cssEscape(fieldName)}"]`);
     return control?.closest('.field') || null;
   }
 
@@ -171,8 +215,19 @@
       if (addFieldErrorDot(container, fieldName, messages)) added += 1;
     });
 
-    const tab = container.querySelector(`.config-tab[data-step="${CSS.escape(step.id)}"]`);
-    if (!added && tab?.classList.contains('has-error')) {
+    const tab = container.querySelector(`.config-tab[data-step="${utils.cssEscape(step.id)}"]`);
+    // Steps validated exclusively by the newer feature-validation layer (e.g.
+    // Alt Sound) have no case in getFieldErrors above, so `added` is always 0
+    // for them. Query that layer's errors directly (a pure read of current
+    // state) rather than checking for its `.feature-has-field-error` DOM
+    // marker — that marker is applied by an independently rAF-scheduled
+    // pass and isn't guaranteed to have run yet on this same frame.
+    const extendedErrors = [
+      ...(window.VPS_FEATURE_VALIDATION?.errors?.() || []),
+      ...(window.VPS_V090_VALIDATION?.errors?.() || [])
+    ];
+    const hasExtendedFieldError = extendedErrors.some(entry => entry.stepId === step.id);
+    if (!added && !hasExtendedFieldError && tab?.classList.contains('has-error')) {
       const fallback = step.fields.find(field => field.readonly)
         || step.fields.find(field => !field.advanced)
         || step.fields[0];
@@ -326,6 +381,15 @@
 
   document.addEventListener('input', queueStatusRefresh, true);
   document.addEventListener('change', queueStatusRefresh, true);
+
+  // Truncated checksum hints expose their full text as a hover tooltip.
+  document.addEventListener('mouseover', event => {
+    const hint = event.target instanceof Element ? event.target.closest('.checksum-drop-hint') : null;
+    const status = hint?.closest('.checksum-drop-status');
+    if (!status) return;
+    if (hint.scrollWidth > hint.clientWidth) status.dataset.tooltip = hint.textContent;
+    else delete status.dataset.tooltip;
+  }, true);
 
   function startPreviewObserver() {
     const preview = document.getElementById('previewYaml');

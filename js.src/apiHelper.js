@@ -63,13 +63,29 @@
     throw new Error('Unexpected lastUpdated.json format');
   }
 
-  function isValidDatabase(data) {
-    return Array.isArray(data)
-      && data.length > 0
-      && data.every(record => record
-        && typeof record === 'object'
-        && typeof record.id === 'string'
-        && record.id.trim().length > 0);
+  function isValidRecord(record) {
+    return Boolean(record)
+      && typeof record === 'object'
+      && typeof record.id === 'string'
+      && record.id.trim().length > 0;
+  }
+
+  // Returns a sanitized copy of `data` with malformed records dropped, or
+  // null if `data` isn't shaped like a database at all (not an array, or no
+  // valid records survive filtering). A handful of bad records from the
+  // upstream source no longer invalidates the entire downloaded dataset.
+  function sanitizeDatabase(data) {
+    if (!Array.isArray(data) || data.length === 0) return null;
+
+    const validRecords = data.filter(isValidRecord);
+    if (validRecords.length === 0) return null;
+
+    const droppedCount = data.length - validRecords.length;
+    if (droppedCount > 0) {
+      console.warn(`VPS database: dropped ${droppedCount} malformed record(s) out of ${data.length}.`);
+    }
+
+    return validRecords;
   }
 
   async function fetchWithTimeout(url, {
@@ -110,9 +126,10 @@
 
       try {
         const response = await fetchWithTimeout(url, { cache: 'no-store' });
-        const data = await response.json();
+        const rawData = await response.json();
+        const data = sanitizeDatabase(rawData);
 
-        if (!isValidDatabase(data)) {
+        if (!data) {
           throw new Error('Unexpected VPS database format');
         }
 
@@ -161,7 +178,9 @@
 
         request.onsuccess = () => {
           const record = request.result;
-          resolve(record && isValidDatabase(record.data) ? record : null);
+          if (!record) { resolve(null); return; }
+          const sanitized = sanitizeDatabase(record.data);
+          resolve(sanitized ? { ...record, data: sanitized } : null);
         };
         request.onerror = () => reject(request.error || new Error('Unable to read VPS database cache'));
       });
@@ -243,7 +262,7 @@
       return fallback.data;
     }
 
-    if (!forceRefresh && stored?.version === latestVersion && isValidDatabase(stored.data)) {
+    if (!forceRefresh && stored?.version === latestVersion && sanitizeDatabase(stored.data)) {
       emitStatus('current', {
         version: latestVersion,
         source: stored.source || 'IndexedDB',

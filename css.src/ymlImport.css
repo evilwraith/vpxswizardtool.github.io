@@ -81,6 +81,46 @@
   animation: vps-db-toast-pulse 900ms ease-out 1;
 }
 
+/* Outdated-field confirmation prompt: same toast shell, but message wraps
+   and an action row appears below it instead of auto-hiding. */
+.yml-import-toast.has-actions {
+  align-items: start;
+  padding-bottom: 12px;
+}
+
+.yml-import-toast.has-actions .vps-db-toast-message {
+  overflow: visible;
+  white-space: normal;
+  text-overflow: clip;
+}
+
+.yml-import-toast-actions:empty {
+  display: none;
+}
+
+.yml-import-toast-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.yml-import-toast-actions .text-btn {
+  min-height: 30px;
+}
+
+.yml-import-toast-actions .preview-primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.yml-import-toast-actions .preview-primary:hover {
+  color: var(--accent-ink);
+  filter: brightness(1.07);
+}
+
 @media (max-width: 900px) {
   .app-header {
     grid-template-columns: minmax(0, 1fr) auto;

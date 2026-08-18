@@ -5,44 +5,17 @@
   grid-template-areas:
     "alt-id alt-checksum"
     "alt-notes alt-notes"
-    "alt-url alt-url"
-    "alt-version alt-format"
-    "alt-authors alt-authors"
-    "alt-root alt-bundled";
+    "alt-root alt-format"
+    "alt-directory alt-directory";
 }
 
-.field-grid-altSound .field:has(#field-altSoundVPSId) { grid-area: alt-id; }
-.field-grid-altSound .field:has(#field-altSoundChecksum) { grid-area: alt-checksum; }
-.field-grid-altSound .field:has(#field-altSoundNotes) { grid-area: alt-notes; }
-.field-grid-altSound .field:has(#field-altSoundUrlOverride) { grid-area: alt-url; }
-.field-grid-altSound .field:has(#field-altSoundVersionOverride) { grid-area: alt-version; }
-.field-grid-altSound .field:has(#field-altSoundArchiveFormat) { grid-area: alt-format; }
-.field-grid-altSound .field:has(#field-altSoundAuthorsOverride) { grid-area: alt-authors; }
-.field-grid-altSound .field:has(#field-altSoundArchiveRoot) { grid-area: alt-root; }
-.field-grid-altSound .field:has(#field-altSoundBundled) {
-  grid-area: alt-bundled;
-  align-self: center;
-}
-
-.field-grid-altSound .field:has(#field-altSoundNotes) textarea {
-  min-height: 72px;
-  height: 72px;
-  resize: vertical;
-}
-
-.field-grid-altSound .field:has(#field-altSoundBundled) .checkbox-row {
-  min-height: 36px;
-  justify-content: flex-start;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  white-space: nowrap;
-}
-
-#field-altSoundArchiveRoot:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
+.field-alt-id { grid-area: alt-id; }
+.field-alt-checksum { grid-area: alt-checksum; }
+.field-alt-notes { grid-area: alt-notes; }
+.field-alt-format { grid-area: alt-format; }
+.field-alt-root { grid-area: alt-root; }
+.field-alt-directory { grid-area: alt-directory; }
+.field-alt-directory .archive-directory-select { margin-top: 0; }
 
 .field-alt-sound-checksum .checksum-drop-hint {
   min-width: 0;
@@ -55,11 +28,8 @@
       "alt-id"
       "alt-checksum"
       "alt-notes"
-      "alt-url"
-      "alt-version"
-      "alt-format"
-      "alt-authors"
       "alt-root"
-      "alt-bundled";
+      "alt-format"
+      "alt-directory";
   }
 }

@@ -264,11 +264,19 @@
     const file = Array.isArray(record?.tableFiles)
       ? record.tableFiles.find(candidate => String(candidate?.id || '') === selectedId)
       : null;
-    const url = String(file?.imgUrl || '').trim();
-    if (!url) return { url: '', name: '' };
+    const vpxUrl = String(file?.imgUrl || '').trim();
+    if (vpxUrl) {
+      return { url: vpxUrl, name: `${sanitizeId(selectedId)}-preview${getFileExtension(vpxUrl)}` };
+    }
+
+    // The selected VPX has no image of its own — fall back to the main
+    // game preview image (the same cover art shown on the table's header
+    // card) rather than shipping a README with no artwork at all.
+    const coverUrl = String(window.VPS_UTILS?.getCoverUrl?.(record) || '').trim();
+    if (!coverUrl) return { url: '', name: '' };
     return {
-      url,
-      name: `${sanitizeId(selectedId)}-preview${getFileExtension(url)}`
+      url: coverUrl,
+      name: `${sanitizeId(record?.id || selectedId)}-preview${getFileExtension(coverUrl)}`
     };
   }
 
@@ -414,7 +422,7 @@
           showToast('warning', `${label} downloaded`, `${filename} was downloaded, but the preview image could not be downloaded automatically.`);
         }
       } else {
-        showToast('warning', `${label} downloaded`, `${filename} was downloaded. No preview image was available for the selected VPX.`);
+        showToast('warning', `${label} downloaded`, `${filename} was downloaded. No preview image was available for the selected VPX or the table itself.`);
       }
     } catch (error) {
       console.error(`Unable to generate ${label}`, error);

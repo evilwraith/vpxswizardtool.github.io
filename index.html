@@ -116,7 +116,8 @@
         <div class="preview-actions" aria-label="YAML actions">
           <button class="text-btn" id="validateBtn" type="button">Validate</button>
           <button class="text-btn" id="drawerCopyBtn" type="button">Copy</button>
-          <button class="text-btn preview-primary" id="downloadNextBtn" type="button">Download &amp; Clear</button>
+          <button class="text-btn" id="previewClearBtn" type="button">Clear</button>
+          <button class="text-btn preview-primary" id="downloadBtn" type="button">Download</button>
         </div>
         <div class="readme-actions" aria-label="README actions">
           <button class="text-btn readme-action-btn" id="manualReadmeBtn" type="button">Manual README</button>
@@ -152,7 +153,7 @@
           <li>Search for a table by name or VPS ID, or drop an existing <code>.yml</code> file into the header editor.</li>
           <li>Select the VPX and any optional assets you want included.</li>
           <li>Complete the enabled configuration tabs and correct fields marked with an error dot.</li>
-          <li>Validate, then use <strong>Download &amp; Clear</strong> to save the YML and start the next build.</li>
+          <li>Validate, then use <strong>Download</strong> to save the YML, and <strong>Clear</strong> when you're ready to start the next build.</li>
         </ol>
       </section>
       <section class="help-tab-panel" id="helpPanelHelp" role="tabpanel" aria-labelledby="helpTabHelp" data-help-panel="help" hidden>
@@ -160,7 +161,7 @@
         <div class="shortcut-grid">
           <span><kbd>/</kbd> Focus search</span>
           <span><kbd>Ctrl</kbd> + <kbd>Enter</kbd> Validate</span>
-          <span><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Enter</kbd> Download &amp; clear</span>
+          <span><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Enter</kbd> Download</span>
           <span><kbd>Esc</kbd> Close an open dialog</span>
         </div>
       </section>
@@ -207,6 +208,7 @@
   <script src="js.src/uiEnhancements.js"></script>
   <script src="js.src/productionFeatureRuntime.js"></script>
   <script src="js.src/additionalRomsController.js"></script>
+  <script src="js.src/checksumAdditionalController.js"></script>
   <script src="js.src/featureValidationController.js"></script>
   <script src="js.src/v090Enhancements.js"></script>
   <script src="js.src/v091Corrections.js"></script>

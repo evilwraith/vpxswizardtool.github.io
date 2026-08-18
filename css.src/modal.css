@@ -77,7 +77,7 @@
 
 .preview-actions {
   display: grid;
-  grid-template-columns: auto auto minmax(0, 1fr);
+  grid-template-columns: auto auto minmax(0, 1fr) minmax(0, 1fr);
   gap: 8px;
   padding: 10px 0;
 }
@@ -86,8 +86,12 @@
   min-height: 34px;
 }
 
-.preview-actions .preview-primary {
+.preview-actions #downloadBtn,
+.preview-actions #previewClearBtn {
   justify-self: stretch;
+}
+
+.preview-actions .preview-primary {
   border-color: var(--accent);
   background: var(--accent);
   color: var(--accent-ink);
@@ -128,7 +132,6 @@
 
 @media (max-width: 520px) {
   .preview-actions { grid-template-columns: 1fr 1fr; }
-  .preview-actions .preview-primary { grid-column: 1 / -1; }
 }
 
 .app-dialog {

@@ -90,6 +90,7 @@ The Assets Panel lists the available asset categories for the selected table:
 - **ROM**
 - **Color ROM**
 - **PUP Pack**
+- **Alt Sound**
 - **VPU Patch**
 
 Each asset row shows its current state and available database entries. Broken entries are disabled. Supported artwork includes compact thumbnail previews.
@@ -100,15 +101,16 @@ An optional asset that is merely **Available** does not count as a Preview cauti
 
 ## Configuration panel
 
-The Configuration Panel contains tabs for Main, VPX, Backglass, ROM, Color ROM, PUP Pack, and VPU Patch settings.
+The Configuration Panel contains tabs for Main, VPX, Backglass, ROM, Color ROM, PUP Pack, Alt Sound, and VPU Patch settings.
 
 - **Main** contains the Game VPS ID, FPS, tagline, notes, testers, and table metadata overrides.
 - The selected-game header card includes a copy icon beside the Game VPS ID without changing the ID text color.
-- **Enable for Wizard** is intentionally fixed off. Its tooltip appears only while hovering or focusing the checkbox and text.
+- **Disable for Wizard** is unchecked by default. Checking it writes `enabled: false` to the YAML; leaving it unchecked omits the key entirely. Its tooltip appears only while hovering or focusing the checkbox and text.
 - Asset-specific tabs become available when their asset is selected or marked as bundled.
 - Advanced Config sections contain optional metadata and override fields.
-- URL and Version Override fields must be supplied together for ROM, Color ROM, and VPU Patch entries.
+- URL and Version Override fields must be supplied together for ROM, Color ROM, Alt Sound, and VPU Patch entries.
 - Backglass URL Override requires Backglass Authors Override and Backglass Image Override.
+- Alt Sound Checksum is required whenever Alt Sound is selected, URL-overridden, or bundled; a single checksum is written as a plain value, multiple as a list.
 - VPU Patch Checksum is required whenever the VPU Patch tab is enabled.
 - The VPU Patch ID is informational and does not display a field-level error border or error dot.
 - Configuration tooltips are raised above neighboring fields and panel edges.
@@ -152,6 +154,7 @@ Accepted file types depend on the field, including:
 - Single Color ROM files using `.crz`, `.pal`, or `.pac`
 - Double Color ROM PAL/VNI pairs using one `.pal` and one `.vni` file in either checksum field
 - PUP Pack ZIP, RAR, and 7Z archives
+- Alt Sound ZIP, RAR, and 7Z archives
 - VPU Patch files
 
 For PAL/VNI pairs, both checksum fields initially accept either extension. After the first file is dropped, that extension is removed from the other field so the pair cannot contain two files of the same type. Unchecking **PAL/VNI** clears both checksum fields and their dropped-file metadata.
@@ -164,7 +167,7 @@ Files are processed by the browser and are not uploaded by this application.
 
 - YAML keys are emitted in alphabetical order.
 - Empty strings and empty arrays are omitted.
-- `enabled: false` is emitted by default.
+- `enabled: false` is emitted only when Disable for Wizard is checked; otherwise the key is omitted entirely.
 - FPS and `tableYearOverride` are emitted as integers.
 - Testers and Backglass author overrides are emitted as YAML arrays.
 - A single checksum is emitted as a string.
@@ -174,6 +177,7 @@ Files are processed by the browser and are not uploaded by this application.
 - Long non-URL text values use folded YAML blocks.
 - Unsupported UI-only values are excluded from output.
 - VPU Patch values use `diffVPSId`, `diffChecksum`, `diffUrlOverride`, and `diffVersionOverride`.
+- Alt Sound output supports `altSoundVPSId`, `altSoundBundled`, `altSoundChecksum`, `altSoundUrlOverride`, `altSoundVersionOverride`, `altSoundArchiveFormat`, `altSoundArchiveRoot`, `altSoundAuthorsOverride`, and `altSoundNotes` when applicable.
 - PUP Pack output supports `pupVPSId`, `pupBundled`, `pupChecksum`, `pupFileUrl`, `pupVersion`, `pupArchiveFormat`, `pupArchiveRoot`, `pupRequired`, and `pupNotes` when applicable.
 
 ## Keyboard shortcuts
@@ -237,12 +241,9 @@ vendor/libarchive/
 fixtures/
   pup-test.zip
   pup-test.7z
+  pup-test.rar
 test-runtime.html
 README.md
-SECURITY.md
-CODE_OF_CONDUCT.md
-CONTRIBUTING.md
-LICENSE
 ```
 
 ### Main integration points
@@ -261,12 +262,14 @@ LICENSE
 - `js.src/v0102Fixes.js` preserves scroll position after imports and removes unused available assets from Preview caution counts.
 - `css.src/v0103.css` standardizes modal placement near the top of the viewport.
 
-## Repository policy files
+## Repository policy files (planned, not yet added)
 
-- `SECURITY.md` explains browser-side processing, dependency boundaries, reporting guidance, and information that should not be submitted publicly.
-- `CODE_OF_CONDUCT.md` defines expected behavior and restrictions against misuse, resale, paywalling, or monetary exploitation of the repository and hosted site.
-- `CONTRIBUTING.md` contains contribution guidance, project credits, and attribution details.
-- `LICENSE` contains the scoped upstream MIT notice for bundled libarchive.js files. It does not automatically relicense the original builder code or project content.
+These files are described here as a spec for what they should contain once added — none of the four currently exist in the repository root. `vendor/libarchive/LICENSE` is a separate, existing file: the scoped upstream MIT notice for the bundled libarchive.js library only.
+
+- `SECURITY.md` should explain browser-side processing, dependency boundaries, reporting guidance, and information that should not be submitted publicly.
+- `CODE_OF_CONDUCT.md` should define expected behavior and restrictions against misuse, resale, paywalling, or monetary exploitation of the repository and hosted site.
+- `CONTRIBUTING.md` should contain contribution guidance, project credits, and attribution details.
+- `LICENSE` (root) would need a license choice from the maintainer before it's added; it would not automatically relicense `vendor/libarchive.js`, which keeps its own upstream MIT notice regardless.
 
 ## Troubleshooting
 
@@ -340,9 +343,9 @@ Availability alone does not require action. The Preview breakdown counts assets 
 
 Asset-specific tabs become available only when their asset is selected or marked as bundled.
 
-### Why is Enable for Wizard disabled?
+### Is Disable for Wizard enabled by default?
 
-That option is intentionally disabled by default in this builder.
+No. It's unchecked by default, meaning the table stays enabled for Wizard. Check it only when you specifically want this table disabled for Wizard; that writes `enabled: false` to the YAML.
 
 ### Why is Copy or Download blocked?
 
@@ -363,6 +366,11 @@ The builder asks for confirmation. It validates and parses the new file before c
 ## Version history
 
 Newest versions are listed first.
+
+### Unreleased — Documentation catch-up for Alt Sound and VPU Patch
+
+- The Alt Sound and VPU Patch asset categories, their Configuration Panel tabs, checksum/archive handling, and validation rules had shipped in the application but were missing from this README's asset list, configuration panel section, and file tree. This entry documents that catch-up; it does not represent new application behavior.
+- Corrected the file tree below to match the actual repository contents (added the missing `pup-test.rar` fixture; removed references to policy files that don't exist yet — see "Repository policy files" below).
 
 ### v0.10.3 — Modal alignment and consolidated documentation
 

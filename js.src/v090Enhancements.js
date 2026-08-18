@@ -24,7 +24,6 @@
     refreshFrame = window.requestAnimationFrame(() => {
       refreshFrame = 0;
       enhanceGameVpsId();
-      disableWizardToggle();
       enhanceAssetBadges();
       enhanceColorRomFields();
       decorateCustomValidation();
@@ -73,18 +72,10 @@
 
   UI.renderAccordions = function renderAccordionsV090(container, steps, values, callbacks) {
     latestValues = values;
-    const enabledField = WIZARD_STEPS.find(step => step.id === 'main')?.fields
-      .find(field => field.yml_field === 'enabled');
-    const resetEnabled = values.enabled === true;
-    values.enabled = false;
 
     const result = baseRenderAccordions(container, steps, values, callbacks);
     latestAccordion = { container, steps, values, callbacks };
     queueRefresh();
-
-    if (resetEnabled && enabledField) {
-      window.queueMicrotask(() => callbacks.onChange('enabled', false, enabledField));
-    }
     return result;
   };
 
@@ -136,23 +127,6 @@
     field.setAttribute('role', 'group');
     field.setAttribute('aria-label', `Game VPS ID ${value}`);
     field.replaceChildren(code, button);
-  }
-
-  function disableWizardToggle() {
-    const input = document.getElementById('field-enabled');
-    if (!input) return;
-    input.checked = false;
-    input.disabled = true;
-    input.setAttribute('aria-disabled', 'true');
-
-    const row = input.closest('.checkbox-row');
-    if (!row || row.querySelector('.control-tooltip')) return;
-    row.classList.add('has-control-tooltip');
-    const tooltip = document.createElement('span');
-    tooltip.className = 'control-tooltip';
-    tooltip.setAttribute('role', 'tooltip');
-    tooltip.textContent = 'Disabled by default for VPXS compatibility.';
-    row.appendChild(tooltip);
   }
 
   function configForBadge(badge) {
@@ -208,7 +182,7 @@
 
   function allowedColorExtensions(fieldName) {
     const paired = document.getElementById('field-coloredROMPin2DMD')?.checked === true;
-    if (!paired) return fieldName === 'coloredROMChecksum' ? ['.crz', '.pal', '.pac'] : [];
+    if (!paired) return fieldName === 'coloredROMChecksum' ? ['.crz', '.pal', '.pac', '.cromc'] : [];
     const otherExtension = colorExtensions[otherColorField(fieldName)];
     return ['.pal', '.vni'].filter(extension => extension !== otherExtension);
   }
@@ -220,10 +194,19 @@
     ];
     fields.forEach(([fieldName, hint]) => {
       if (!hint || fieldName === preserveField) return;
+      // Never clobber an in-flight or completed drop status — this runs on
+      // every DOM refresh, and rewriting these made drops look unresponsive.
+      if (hint.classList.contains('error')
+        || /^Processing /.test(hint.textContent)
+        || /MD5 calculated/.test(hint.textContent)) return;
       const allowed = allowedColorExtensions(fieldName);
-      hint.classList.remove('error');
-      hint.textContent = allowed.length
-        ? `Drop ${allowed.join(' / ')} file to calculate MD5`
+      // The primary field also accepts archives, which are scanned for the
+      // Color ROM file(s) inside.
+      const display = fieldName === 'coloredROMChecksum' && allowed.length
+        ? [...allowed, '.zip', '.rar', '.7z']
+        : allowed;
+      hint.textContent = display.length
+        ? `Drop ${display.join(' / ')} file to calculate MD5`
         : 'Enable PAL/VNI to use a second checksum';
     });
   }
@@ -339,28 +322,10 @@
     const activeStep = document.querySelector('#accordionStack .config-tab-panel')?.dataset.step;
     errors.filter(error => error.stepId === activeStep).forEach(addCustomFieldDot);
 
-    document.querySelectorAll('#accordionStack .config-tab').forEach(tab => {
-      const step = WIZARD_STEPS.find(candidate => candidate.id === tab.dataset.step);
-      if (!step) return;
-      const internalError = latestAccordion?.callbacks?.getStatus?.(step)?.className === 'error';
-      const customCount = errors.filter(error => error.stepId === step.id).length;
-      tab.classList.toggle('has-v090-error', customCount > 0);
-      if (customCount > 0) {
-        tab.classList.add('has-error');
-        if (!tab.querySelector('.config-tab-alert')) {
-          const marker = document.createElement('span');
-          marker.className = 'config-tab-alert';
-          marker.setAttribute('aria-hidden', 'true');
-          tab.appendChild(marker);
-        }
-        tab.setAttribute('aria-label', `${step.label}: ${customCount} error${customCount === 1 ? '' : 's'}`);
-      } else if (!internalError) {
-        tab.classList.remove('has-error');
-        tab.querySelector('.config-tab-alert')?.remove();
-        tab.removeAttribute('title');
-        tab.setAttribute('aria-label', step.label);
-      }
-    });
+    // Tab-level has-error/has-warning classes are now written exclusively by
+    // main.js's refreshTabStatuses(), which merges this same customValidationErrors()
+    // output alongside base and feature validation into one canonical per-tab
+    // status. Duplicating that write here used to race with it.
   }
 
   function appendCustomErrorsToDialog() {
@@ -586,7 +551,7 @@
       return;
     }
 
-    if ((button.id === 'drawerCopyBtn' || button.id === 'downloadNextBtn') && customValidationErrors().length) {
+    if ((button.id === 'drawerCopyBtn' || button.id === 'downloadBtn') && customValidationErrors().length) {
       event.preventDefault();
       event.stopImmediatePropagation();
       openValidationWithCustomErrors();
@@ -626,6 +591,8 @@
       observer.observe(document.body, { childList: true, subtree: true });
     }
   }
+
+  window.VPS_V090_VALIDATION = Object.freeze({ errors: customValidationErrors });
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });
   else init();

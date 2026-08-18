@@ -1,10 +1,8 @@
 # Directories
-.qodo/
 node_modules/
-_archived/
-
-
-docker/
+.github/
 
 # Files
 minify-JS.js
+CLAUDE.md
+.claude/settings.local.json

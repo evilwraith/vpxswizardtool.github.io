@@ -1,31 +1,33 @@
 /* Production feature extension: Main layout, Alt Sound, Tutorials, and Additional ROMs. */
 
-/* Match the Main ID width to the standard ID column while preserving compact controls. */
+/* Game VPS ID absorbs the row's free space; Wizard Disabled sizes to its
+   single-line label; Tutorial keeps a workable minimum. */
 .field-grid-main {
-  grid-template-columns: minmax(0, calc(50% - 5px)) 72px minmax(150px, 1fr);
+  grid-template-columns: minmax(0, 1fr) 64px minmax(150px, 0.55fr) auto;
   grid-template-areas:
-    "game fps enabled"
-    "tagline tagline tagline"
-    "notes notes testers";
+    "game fps tutorial enabled"
+    "tagline tagline tagline tagline"
+    "notes notes notes testers";
 }
 .field-main-id { min-width: 0; }
 .field-main-fps { min-width: 0; }
-.field-main-enabled { min-width: 150px; }
+.field-main-tutorial { grid-area: tutorial; min-width: 0; }
 .field-main-enabled .checkbox-row {
   justify-content: flex-start;
   width: max-content;
   max-width: 100%;
 }
+/* Notes cedes 100px of its track to Testers. */
+.field-grid-main .field-main-notes { width: calc(100% - 100px); }
+.field-grid-main .field-main-testers { width: calc(100% + 100px); margin-left: -100px; }
 
 /* Give Year Override enough room for its complete placeholder. */
 .advanced-grid-main {
   grid-template-columns: minmax(0, 1fr) minmax(150px, 0.42fr);
   grid-template-areas:
     "table-name table-name"
-    "manufacturer year"
-    "tutorial tutorial";
+    "manufacturer year";
 }
-.advanced-grid-main .field-main-tutorial { grid-area: tutorial; }
 .advanced-grid-main .field-main-year-override { min-width: 150px; }
 .advanced-grid-main .field-main-manufacturer-override { min-width: 0; }
 
@@ -42,6 +44,7 @@
 }
 
 /* Additional ROM control inside ROM Advanced Config. */
+.additional-rom-controls { position: relative; }
 .additional-rom-add {
   position: relative;
   display: inline-grid;
@@ -83,60 +86,222 @@
 .additional-rom-add:hover::after,
 .additional-rom-add:focus-visible::after { display: block; }
 
-.additional-rom-controls {
+.additional-rom-indicator {
   position: relative;
-  padding: 10px 12px 12px;
-  border-top: 1px solid var(--panel-line);
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  margin-left: 6px;
+  padding: 0;
+  border: 1px solid var(--panel-line-strong);
+  border-radius: 6px;
+  background: var(--panel-raised);
+  color: var(--accent);
 }
-.additional-rom-list { display: grid; gap: 7px; }
-.additional-rom-empty {
-  margin: 0;
-  color: var(--text-faint);
-  font-size: 11px;
+.additional-rom-indicator svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
 }
-.additional-rom-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 8px 9px;
-  border: 1px solid var(--panel-line);
-  border-radius: 7px;
-  background: var(--panel-soft);
+.additional-rom-indicator:hover,
+.additional-rom-indicator:focus-visible {
+  border-color: var(--accent);
+  background: var(--accent-soft);
 }
-.additional-rom-item strong,
-.additional-rom-item small { display: block; }
-.additional-rom-item strong { color: var(--text); font-size: 11.5px; }
-.additional-rom-item small {
-  overflow-wrap: anywhere;
-  color: var(--text-faint);
-  font: 10px "JetBrains Mono", monospace;
+.additional-rom-indicator::after {
+  position: absolute;
+  z-index: 560;
+  right: 0;
+  bottom: calc(100% + 7px);
+  display: none;
+  width: max-content;
+  max-width: 260px;
+  padding: 5px 7px;
+  border: 1px solid var(--panel-line-strong);
+  border-radius: 6px;
+  background: var(--panel-raised);
+  box-shadow: var(--shadow-lift);
+  color: var(--text);
+  content: attr(data-tooltip);
+  font: 700 10px/1.2 "Inter", sans-serif;
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: normal;
 }
-.additional-rom-actions { display: flex; flex: 0 0 auto; gap: 6px; }
-.additional-rom-actions .text-btn { min-height: 28px; padding: 0 8px; }
+.additional-rom-indicator:hover::after,
+.additional-rom-indicator:focus-visible::after { display: block; }
 
 /* Additional ROM editor dialog. */
 .additional-rom-dialog { width: min(640px, calc(100% - 28px)); }
 .additional-rom-body { display: grid; gap: 12px; }
 .additional-rom-grid { grid-template-columns: 1fr; padding-top: 0; }
-.additional-rom-errors {
-  display: grid;
-  gap: 4px;
-  padding: 9px 10px;
-  border: 1px solid color-mix(in srgb, var(--state-red) 55%, var(--panel-line));
-  border-radius: 8px;
-  background: var(--danger-soft);
-  color: var(--text);
-  font-size: 11px;
-}
-.additional-rom-errors[hidden] { display: none; }
 .additional-rom-advanced { margin: 0; }
+/* Modal required fields use the app-wide red border + error dot system. */
+#additionalRomDialog .field.has-field-error > select,
+#additionalRomDialog .field.has-field-error > input {
+  border-color: color-mix(in srgb, var(--state-red) 72%, var(--panel-line));
+}
 .additional-rom-dialog-actions {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
 }
 .additional-rom-dialog-actions .preview-primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+/* Additional-checksum icon inside every simple checksum field (+ Color ROM
+   primary). Anchored to the input's own vertical center — checksum fields
+   all share the same input height (36px) plus the checksum-drop-field's 5px
+   padding, so a fixed offset stays correct without per-field measurement. */
+.field.checksum-drop-field { position: relative; }
+.checksum-additional-btn {
+  position: absolute;
+  top: 23px;
+  right: 13px;
+  z-index: 4;
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+  transform: translateY(-50%);
+}
+.checksum-additional-btn svg {
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.checksum-additional-btn:hover,
+.checksum-additional-btn:focus-visible { color: var(--accent); }
+.checksum-additional-btn.has-additional { color: var(--accent); }
+.checksum-additional-btn.has-additional::after {
+  position: absolute;
+  top: -5px;
+  right: -6px;
+  display: grid;
+  place-items: center;
+  min-width: 12px;
+  height: 12px;
+  padding: 0 2px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  content: attr(data-count);
+  font: 700 8px/1 "Inter", sans-serif;
+}
+.checksum-additional-btn[data-tooltip]::before {
+  position: absolute;
+  z-index: 560;
+  right: 0;
+  bottom: calc(100% + 7px);
+  display: none;
+  width: max-content;
+  max-width: 220px;
+  padding: 5px 7px;
+  border: 1px solid var(--panel-line-strong);
+  border-radius: 6px;
+  background: var(--panel-raised);
+  box-shadow: var(--shadow-lift);
+  color: var(--text);
+  content: attr(data-tooltip);
+  font: 700 10px/1.2 "Inter", sans-serif;
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: normal;
+}
+.checksum-additional-btn[data-tooltip]:hover::before,
+.checksum-additional-btn[data-tooltip]:focus-visible::before { display: block; }
+.field.checksum-drop-field input[type="text"] { padding-right: 30px; }
+
+/* Additional-checksum editor dialog. */
+.checksum-additional-dialog { width: min(480px, calc(100% - 28px)); }
+.checksum-additional-body { display: grid; gap: 12px; }
+.checksum-additional-list { display: grid; gap: 10px; }
+.checksum-additional-row { position: relative; padding-right: 32px !important; }
+/* Default field-error-dot position (top:-4/right:-4) pokes into the same
+   corner as the remove button (right:0, 22px wide) — the dot's own halo
+   overlaps it. Keep the standard outside-poking top offset (clears the
+   remove button vertically) but shift right enough to clear it and its
+   halo horizontally too. */
+.checksum-additional-row > .field-error-dot { right: 30px; }
+.checksum-additional-row input { text-transform: uppercase; }
+.checksum-additional-row.has-field-error > input {
+  border-color: color-mix(in srgb, var(--state-red) 72%, var(--panel-line));
+}
+.checksum-additional-remove {
+  position: absolute;
+  top: 18px;
+  right: 0;
+  transform: translateY(-50%);
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--panel-line-strong);
+  border-radius: 6px;
+  background: var(--panel-raised);
+  color: var(--text-faint);
+  cursor: pointer;
+}
+.checksum-additional-remove svg {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+#checksumAdditionalDialog .dialog-close svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+/* Fixed-position tooltip for modal row error dots — JS-placed via
+   getBoundingClientRect so it always escapes the dialog body's
+   overflow:auto scroll clipping, regardless of how far down the
+   (unlimited-length) row list the dot sits. */
+.checksum-additional-tooltip {
+  position: fixed;
+  z-index: 700;
+  max-width: 260px;
+  padding: 6px 8px;
+  border: 1px solid var(--panel-line-strong);
+  border-radius: 7px;
+  background: var(--panel-raised);
+  box-shadow: var(--shadow-lift);
+  color: var(--text);
+  font: 600 10.5px/1.35 "Inter", sans-serif;
+  pointer-events: none;
+}
+.checksum-additional-tooltip[hidden] { display: none; }
+.checksum-additional-remove:hover,
+.checksum-additional-remove:focus-visible { border-color: var(--danger); color: var(--danger); }
+.checksum-additional-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.checksum-additional-dialog-actions .preview-primary {
   border-color: var(--accent);
   background: var(--accent);
   color: var(--accent-ink);
@@ -152,27 +317,24 @@
     grid-template-columns: minmax(110px, 1fr) 64px;
     grid-template-areas:
       "game fps"
+      "tutorial tutorial"
       "enabled enabled"
       "tagline tagline"
       "notes notes"
       "testers testers";
   }
   .field-main-enabled { min-width: 0; }
+  .field-grid-main .field-main-notes { width: 100%; }
+  .field-grid-main .field-main-testers { width: 100%; margin-left: 0; }
   .advanced-grid-main {
     grid-template-columns: 1fr;
     grid-template-areas:
       "table-name"
       "manufacturer"
-      "year"
-      "tutorial";
+      "year";
   }
   .advanced-grid-main .field-main-year-override { min-width: 0; }
   .field-grid-altSound { grid-template-columns: 1fr; }
-}
-
-@media (max-width: 520px) {
-  .additional-rom-item { align-items: flex-start; flex-direction: column; }
-  .additional-rom-actions { width: 100%; justify-content: flex-end; }
 }
 
 /* The legacy Wizard helper still creates a tooltip node; the inverse control owns the final copy. */
@@ -220,6 +382,7 @@
   z-index: 510;
   top: -4px;
   right: -4px;
+  box-sizing: border-box;
   width: 9px;
   height: 9px;
   border: 2px solid var(--panel-soft);

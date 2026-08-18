@@ -89,7 +89,7 @@
       const source = blob instanceof Blob ? blob : new Blob([blob]);
       if (typeof Worker === 'undefined' || typeof source.stream !== 'function') {
         source.arrayBuffer()
-          .then(buffer => resolve(md5ArrayBuffer(buffer)))
+          .then(buffer => resolve(md5ArrayBuffer(buffer).toUpperCase()))
           .catch(reject);
         return;
       }
@@ -101,7 +101,7 @@
 
       worker.addEventListener('message', event => {
         if (event.data?.error) fail(new Error(event.data.error));
-        else if (event.data?.checksum !== undefined) done(event.data.checksum);
+        else if (event.data?.checksum !== undefined) done(String(event.data.checksum).toUpperCase());
       });
       worker.addEventListener('error', event => {
         fail(event.error || new Error(event.message || 'MD5 worker failed.'));
@@ -183,59 +183,79 @@
     }
   }
 
+  function ensureDirectorySelect() {
+    const rootInput = document.getElementById('field-altSoundArchiveRoot');
+    const grid = rootInput?.closest('.field-grid-altSound');
+    if (!grid) return null;
+
+    let wrapper = grid.querySelector(':scope > .field-alt-directory');
+    if (wrapper) return wrapper.querySelector('select');
+
+    wrapper = document.createElement('div');
+    wrapper.className = 'field field-alt-directory';
+    const label = document.createElement('label');
+    label.className = 'visually-hidden';
+    label.htmlFor = 'field-altSoundArchiveRoot-directory-select';
+    label.textContent = 'Alt Sound Archive Directory';
+    const select = document.createElement('select');
+    select.id = 'field-altSoundArchiveRoot-directory-select';
+    select.className = 'archive-directory-select';
+    select.setAttribute('aria-label', 'Choose Alt Sound archive root from loaded directories');
+    select.addEventListener('change', () => {
+      if (!select.value) return;
+      const input = document.getElementById('field-altSoundArchiveRoot');
+      if (input) input.value = select.value;
+      runtime.state.callbacks?.onChange?.('altSoundArchiveRoot', select.value, {
+        yml_field: 'altSoundArchiveRoot', type: 'str'
+      });
+      select.value = '';
+    });
+    wrapper.append(label, select);
+    grid.appendChild(wrapper);
+    return select;
+  }
+
   function populateRootSelect() {
-    const select = document.getElementById('field-altSoundArchiveRoot');
+    const select = ensureDirectorySelect();
     if (!select) return;
 
     const directories = Array.isArray(runtime.state.values?.__altSoundArchiveDirectories)
       ? runtime.state.values.__altSoundArchiveDirectories
       : [];
-    const currentValue = String(runtime.state.values?.altSoundArchiveRoot || select.value || '');
-    const labels = directories.length
-      ? [`Choose from ${directories.length} archive director${directories.length === 1 ? 'y' : 'ies'}…`]
-      : ['Drop an Alt Sound archive to browse directories'];
     const desiredValues = ['', ...directories];
     const currentValues = [...select.options].map(option => option.value);
 
     if (currentValues.length !== desiredValues.length || currentValues.some((value, index) => value !== desiredValues[index])) {
+      const placeholder = directories.length
+        ? `Choose from ${directories.length} archive director${directories.length === 1 ? 'y' : 'ies'}…`
+        : 'Drop an Alt Sound archive to browse directories';
       select.replaceChildren();
-      select.add(new Option(labels[0], ''));
+      select.add(new Option(placeholder, ''));
       directories.forEach(directory => select.add(new Option(directory, directory)));
     }
 
     select.disabled = directories.length === 0;
-    if (currentValue && directories.includes(currentValue)) select.value = currentValue;
-    else if (!currentValue) select.value = '';
   }
 
-  function ensureDefaultFormat() {
-    const { values, selections, callbacks } = runtime.state;
-    if (!values || !callbacks) return;
-    const active = Boolean(selections?.altSoundFiles || values.altSoundVPSId || values.altSoundBundled || values.altSoundUrlOverride);
-    if (active && !values.altSoundArchiveFormat) {
-      callbacks.onChange('altSoundArchiveFormat', 'zip', { yml_field: 'altSoundArchiveFormat', type: 'select' });
-      return;
-    }
+  // The format select intentionally starts on its placeholder ("Alt Sound
+  // Archive Format") and is only populated by the user or by an archive drop —
+  // never forced to a default value.
+  function syncFormatSelect() {
+    const { values } = runtime.state;
+    if (!values) return;
     const select = document.getElementById('field-altSoundArchiveFormat');
     if (select && values.altSoundArchiveFormat && select.value !== values.altSoundArchiveFormat) {
       select.value = values.altSoundArchiveFormat;
     }
   }
 
-  function checksumValues() {
-    const value = runtime.state.values?.altSoundChecksum;
-    return Array.isArray(value) ? value.map(String).filter(Boolean) : String(value || '');
-  }
-
   function decorateChecksumField() {
+    // Only the primary checksum lives in this input — additional ones (added
+    // via js.src/checksumAdditionalController.js) are index 1+ and are never
+    // displayed here, matching every other checksum field in the app.
     const input = document.getElementById('field-altSoundChecksum');
     const wrapper = input?.closest('.field');
     if (!input || !wrapper) return;
-
-    const displayed = Array.isArray(checksumValues()) ? checksumValues().join(', ') : checksumValues();
-    if (input.value !== displayed) input.value = displayed;
-    input.placeholder = 'Alt Sound Checksum(s)';
-    wrapper.classList.add('checksum-drop-field', 'field-alt-sound-checksum', 'field-checksum-standard');
 
     let status = wrapper.querySelector(':scope > .checksum-drop-status');
     if (!status) {
@@ -284,6 +304,13 @@
       hint.textContent = `Processing ${file.name}…`;
       setLoading(true);
 
+      const format = extension.slice(1);
+      runtime.state.callbacks?.onChange?.('altSoundArchiveFormat', format, {
+        yml_field: 'altSoundArchiveFormat', type: 'select'
+      });
+      const formatSelect = document.getElementById('field-altSoundArchiveFormat');
+      if (formatSelect) formatSelect.value = format;
+
       const checksumTask = calculateMd5(file);
       const directoryTask = readDirectories(file);
       const [checksumResult, directoryResult] = await Promise.allSettled([checksumTask, directoryTask]);
@@ -291,8 +318,9 @@
 
       if (checksumResult.status === 'fulfilled' && checksumResult.value) {
         input.value = checksumResult.value;
-        runtime.state.callbacks?.onChange?.('altSoundChecksum', checksumResult.value, {
-          yml_field: 'altSoundChecksum', type: 'array'
+        const nextValue = utils.replacePrimaryChecksum(runtime.state.values?.altSoundChecksum, checksumResult.value);
+        runtime.state.callbacks?.onChange?.('altSoundChecksum', nextValue, {
+          yml_field: 'altSoundChecksum', type: 'str'
         });
         const sources = { ...(runtime.state.values?.__checksumSources || {}) };
         sources.altSoundChecksum = { name: file.name, extension };
@@ -329,7 +357,7 @@
     refreshFrame = 0;
     decorateChecksumField();
     populateRootSelect();
-    ensureDefaultFormat();
+    syncFormatSelect();
   }
 
   function schedule() {
