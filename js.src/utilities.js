@@ -285,27 +285,6 @@
     return rest.length ? [value, ...rest] : value;
   }
 
-  function highlightYaml(yaml) {
-    return String(yaml)
-      .split('\n')
-      .map(line => {
-        if (line.startsWith('#') || line === '---') {
-          return `<span class="yml-comment">${escapeHtml(line)}</span>`;
-        }
-
-        const listMatch = line.match(/^(\s*-\s+)(.*)$/);
-        if (listMatch) {
-          return `${escapeHtml(listMatch[1])}<span class="yml-value">${escapeHtml(listMatch[2])}</span>`;
-        }
-
-        const keyMatch = line.match(/^(\s*)([^:#][^:]*):(.*)$/);
-        if (!keyMatch) return escapeHtml(line);
-
-        return `${escapeHtml(keyMatch[1])}<span class="yml-key">${escapeHtml(keyMatch[2])}</span>:<span class="yml-value">${escapeHtml(keyMatch[3])}</span>`;
-      })
-      .join('\n');
-  }
-
   function safeFilename(value, fallback = 'output') {
     const cleaned = String(value || fallback)
       .trim()
@@ -742,7 +721,6 @@
     getCoverUrl,
     normalizeArray,
     wrapText,
-    highlightYaml,
     safeFilename,
     downloadText,
     copyText,
