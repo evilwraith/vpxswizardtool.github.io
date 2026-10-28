@@ -118,6 +118,52 @@
   overflow-wrap: anywhere;
 }
 
+/* The WRAP toggle (2026-10-03). The frame takes over the preview's place in
+   the drawer's flex column so the toggle can sit over the preview's top-right
+   corner without being inside the scrolling <pre>, which keeps it still while
+   the YAML scrolls sideways. Unchecked, lines stop wrapping and the preview's
+   own overflow: auto scrolls them; the drawer's width never changes because
+   its grid column is fixed. Pure CSS: no script reads or writes the box. */
+.preview-yaml-frame {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+
+.preview-yaml-frame:has(#previewWrapToggle:not(:checked)) #previewYaml {
+  white-space: pre;
+  overflow-wrap: normal;
+}
+
+.preview-wrap-toggle {
+  position: absolute;
+  z-index: 1;
+  top: 8px;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 7px;
+  border: 1px solid var(--panel-line);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text-faint);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  user-select: none;
+}
+
+.preview-wrap-toggle input {
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
 .yml-key { color: var(--accent-2); }
 .yml-value { color: var(--text); }
 .yml-comment { color: var(--text-faint); }

@@ -71,7 +71,7 @@
   function applyControlCorrections() {
     controlFrame = 0;
     document.getElementById('field-tutorialVPSId')?.closest('.field')?.classList.add('field-main-tutorial');
-    window.VPS_FEATURE_VALIDATION?.refresh?.();
+    window.VPS_ERROR_DOTS?.refresh?.();
     // Re-run after the capture-phase refreshFeatureUi call below, since that
     // one can fire before the target's own change handler has updated state
     // on the same event (e.g. toggling Color ROM's PAL/VNI checkbox) —
@@ -89,6 +89,7 @@
 
   function refreshFeatureUi() {
     window.VPS_ADDITIONAL_ROMS?.render?.();
+    window.VPS_MAGIC_PASSWORDS?.render?.();
     // Deliberately NOT called here — see applyControlCorrections. This
     // function also runs from capture-phase document input/change listeners
     // (below), which fire before the target field's own handler updates

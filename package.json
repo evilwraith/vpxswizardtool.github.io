@@ -1,0 +1,11 @@
+{
+  "name": "vpxs-yml-builder",
+  "version": "1.0.0",
+  "private": true,
+  "description": "VPXS YML Builder - static browser tool that generates YML config files for virtual pinball tables. This package.json exists for the test runner only; the site itself has no build step and ships the files in js.src/ and css.src/ as they are.",
+  "scripts": {
+    "test": "node tests/run.js",
+    "fixtures": "node tests/make-fixtures.mjs"
+  },
+  "license": "UNLICENSED"
+}

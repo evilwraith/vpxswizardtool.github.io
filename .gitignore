@@ -1,6 +1,9 @@
 # Directories
 node_modules/
-.github/
+# .github/* not .github/ - git won't descend into an ignored directory to
+# un-ignore a child. Local editor files stay ignored; CI workflows are tracked.
+.github/*
+!.github/workflows/
 
 # Files
 minify-JS.js

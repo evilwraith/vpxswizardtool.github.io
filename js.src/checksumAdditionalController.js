@@ -36,24 +36,28 @@
     return fieldDefinition(yml_field).name || yml_field;
   }
 
-  function fullValues(yml_field) {
+  // The primary is always index 0, even when it is blank. An additional
+  // checksum is never promoted into an empty primary slot: on the VPX tab the
+  // first additional entry can be an archive MD5, and moving it up would put
+  // the wrong file's hash in the field and hide "required" (Jason,
+  // 2026-10-13).
+  function primaryValue(yml_field) {
     const raw = runtime.state.values?.[yml_field];
-    if (Array.isArray(raw)) return raw.map(value => String(value || '').trim()).filter(Boolean);
-    const single = String(raw || '').trim();
-    return single ? [single] : [];
+    return String((Array.isArray(raw) ? raw[0] : raw) ?? '').trim();
   }
 
   function additionalValues(yml_field) {
-    return fullValues(yml_field).slice(1);
+    const raw = runtime.state.values?.[yml_field];
+    if (!Array.isArray(raw)) return [];
+    return raw.slice(1).map(value => String(value ?? '').trim()).filter(Boolean);
   }
 
   function commit(yml_field, additionalList) {
-    const primary = fullValues(yml_field)[0] || '';
-    const combined = [primary, ...additionalList].map(value => value.trim()).filter(Boolean);
+    const primary = primaryValue(yml_field);
+    const additional = additionalList.map(value => value.trim()).filter(Boolean);
     let next;
-    if (!combined.length) next = undefined;
-    else if (combined.length === 1) next = combined[0];
-    else next = combined;
+    if (!additional.length) next = primary || undefined;
+    else next = [primary, ...additional];
     runtime.state.callbacks?.onChange?.(yml_field, next, fieldDefinition(yml_field));
   }
 
@@ -284,12 +288,12 @@
       btn.hidden = hideForColorRom;
       if (hideForColorRom) return;
 
-      // The visible input only ever shows the primary (index 0). Saving the
-      // modal can promote an additional entry into that slot (e.g. when the
-      // primary was empty) without anything else re-rendering this input, so
-      // sync it here — skipped while the user is actively typing in it.
+      // The visible input only ever shows the primary (index 0), blank when
+      // the primary is blank. Sync it here, since a draft or import can set
+      // the value without re-rendering this input — skipped while the user
+      // is actively typing in it.
       if (document.activeElement !== input) {
-        const displayed = fullValues(yml_field)[0]?.toUpperCase() || '';
+        const displayed = primaryValue(yml_field).toUpperCase();
         if (input.value !== displayed) input.value = displayed;
       }
 

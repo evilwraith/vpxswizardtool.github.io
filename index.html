@@ -25,6 +25,7 @@
   <link rel="stylesheet" href="css.src/altSound.css">
   <link rel="stylesheet" href="css.src/readmeGenerator.css">
   <link rel="stylesheet" href="css.src/secretTheme.css">
+  <link rel="stylesheet" href="css.src/walkthrough.css">
 </head>
 <body>
   <main class="app" id="app">
@@ -123,7 +124,13 @@
           <button class="text-btn readme-action-btn" id="manualReadmeBtn" type="button">Manual README</button>
           <button class="text-btn readme-action-btn" id="wizardReadmeBtn" type="button">Wizard README</button>
         </div>
-        <pre id="previewYaml" class="mono" tabindex="0"></pre>
+        <div class="preview-yaml-frame">
+          <label class="preview-wrap-toggle">
+            <input type="checkbox" id="previewWrapToggle" checked>
+            <span>WRAP</span>
+          </label>
+          <pre id="previewYaml" class="mono" tabindex="0"></pre>
+        </div>
       </aside>
     </section>
 
@@ -134,29 +141,224 @@
     </footer>
   </main>
 
-  <dialog class="app-dialog" id="helpDialog" aria-labelledby="helpTitle">
+  <dialog class="app-dialog help-dialog" id="helpDialog" aria-labelledby="helpTitle">
     <div class="dialog-header">
       <div>
-        <p class="eyebrow">How it works</p>
-        <h2 id="helpTitle">Help</h2>
+        <p class="eyebrow" id="helpTitle">How it works</p>
       </div>
-      <button class="dialog-close" data-close-dialog type="button" aria-label="Close help">×</button>
+      <button class="dialog-close" data-close-dialog type="button" aria-label="Close help">&times;</button>
     </div>
     <div class="dialog-body help-dialog-body">
       <div class="help-slim-tabs" role="tablist" aria-label="Help sections">
         <button class="help-slim-tab active" id="helpTabInstructions" type="button" role="tab" aria-selected="true" aria-controls="helpPanelInstructions" data-help-tab="instructions">Instructions</button>
-        <button class="help-slim-tab" id="helpTabHelp" type="button" role="tab" aria-selected="false" aria-controls="helpPanelHelp" data-help-tab="help">Help</button>
+        <button class="help-slim-tab" id="helpTabWalkthrough" type="button" role="tab" aria-selected="false" aria-controls="helpPanelWalkthrough" data-help-tab="walkthrough">Walkthrough</button>
         <button class="help-slim-tab" id="helpTabFaq" type="button" role="tab" aria-selected="false" aria-controls="helpPanelFaq" data-help-tab="faq">FAQ</button>
+        <button class="help-slim-tab" id="helpTabHotkeys" type="button" role="tab" aria-selected="false" aria-controls="helpPanelHotkeys" data-help-tab="hotkeys">Hotkeys</button>
       </div>
+
       <section class="help-tab-panel active" id="helpPanelInstructions" role="tabpanel" aria-labelledby="helpTabInstructions" data-help-panel="instructions">
-        <ol>
-          <li>Search for a table by name or VPS ID, or drop an existing <code>.yml</code> file into the header editor.</li>
-          <li>Select the VPX and any optional assets you want included.</li>
-          <li>Complete the enabled configuration tabs and correct fields marked with an error dot.</li>
-          <li>Validate, then use <strong>Download</strong> to save the YML, and <strong>Clear</strong> when you're ready to start the next build.</li>
+        <p class="help-lede">Every field is grouped below by the job it does, so one explanation covers a whole family of fields. Open a group to read it. New here? The <strong>Walkthrough</strong> tab leads you through the real thing.</p>
+
+        <div class="help-doc-list">
+          <details open>
+            <summary>Asset rows: choosing a version, Bundled, and Override</summary>
+            <div class="help-doc-body">
+              <p>The Assets Panel has one row per asset type: VPX, Backglass, ROM, Color ROM, PUP Pack, Alt Sound, and VPU Patch. Each row is how you tell the builder the table uses that asset. Filling a row unlocks its configuration tab below.</p>
+              <p>There are three ways to fill a row, and they are not interchangeable:</p>
+              <ul>
+                <li><strong>Select a version</strong> from the dropdown. This is the normal case. The asset exists in the VPS database, so the builder records its ID and you only add a checksum and notes.</li>
+                <li><strong>Bundled</strong> means the file ships inside the table download itself. There is nothing separate to link, so a bundled asset only needs <strong>Notes</strong>.</li>
+                <li><strong>Override</strong> means the asset has no VPS entry at all. Because nothing can be looked up, Override requires <em>every</em> Advanced Config field on that tab: Notes, URL Override, and Version or Authors depending on the asset.</li>
+              </ul>
+              <p>The Override checkbox never appears in the finished YML. It exists only to unlock the tab and make you supply the details by hand.</p>
+              <p><strong>Once a row has something selected, its title becomes a link.</strong> It opens the page where that file is actually hosted, in a new tab. That is almost never the Virtual Pinball Spreadsheet itself: VPS catalogs the files and points elsewhere for the download, most often <strong>VPUniverse</strong> or <strong>VPForums</strong>, sometimes Pinball Nirvana, a Google Drive folder, or a MEGA link. So the row title is both how you confirm you picked the right version and how you go and get it. Rows with nothing selected, and entries whose links are all broken, stay as plain text.</p>
+              <p><strong>One row does not behave like the others: VPU Patch.</strong> VPS does not publish patches as their own category. They sit among the table's VPX files, tagged with a <code>VPU Patch</code> feature, and each records the VPX it patches. So the VPU Patch row only offers a patch once you have selected that exact VPX above it, and stays empty for every other VPX on the same table. If the row looks broken, check your VPX selection first.</p>
+              <p>If the builder ever demands a URL for something you marked Bundled, that is a bug, not a rule. Bundled and Override have deliberately different requirements.</p>
+            </div>
+          </details>
+
+          <details>
+            <summary>VPS ID fields (8 fields, all read-only)</summary>
+            <div class="help-doc-body">
+              <p>Game VPS ID, VPX ID, Backglass ID, ROM ID, Color ROM ID, PUP Pack ID, Alt Sound ID, and VPU Patch ID all work the same way: <strong>you never type in them.</strong> They fill themselves from the table you searched for and the versions you picked in the Assets Panel.</p>
+              <p>If one is empty, the cause is upstream: either no table is loaded, or you have not selected that asset yet.</p>
+              <p><strong>One field is named like these but is not one of them:</strong> <em>Tutorial VPS ID</em>, on the Main tab. That one is a dropdown you choose from, not a field that fills itself. It is covered under "Everything else on the Main tab" below.</p>
+              <p><strong>One trap worth knowing.</strong> When a tab reports an error the checker cannot pin to a specific field, it drops the error dot on that tab's first read-only field. On the Main tab that is Game VPS ID. A dot there usually means something else on the tab is wrong, not the ID.</p>
+            </div>
+          </details>
+
+          <details>
+            <summary>Checksum fields (8 fields plus the Additional ROM dialog)</summary>
+            <div class="help-doc-body">
+              <p>Every checksum field behaves the same way. <strong>Drag a file onto the field</strong> and the MD5 is calculated inside your browser. Nothing is uploaded. You can also type or paste a checksum by hand.</p>
+              <p>All checksums are 32 characters, hexadecimal, and shown in uppercase. Typing stops at 32 characters, and the status line under the field tells you exactly what was hashed.</p>
+              <p><strong>The exceptions, by field:</strong></p>
+              <div class="help-table-wrap">
+                <table class="help-table">
+                  <thead><tr><th>Field</th><th>Drop an archive on it and the builder will&hellip;</th></tr></thead>
+                  <tbody>
+                    <tr><td>VPX Checksum</td><td>reach inside and hash only the <code>.vpx</code></td></tr>
+                    <tr><td>Backglass Checksum</td><td>reach inside and hash only the <code>.directb2s</code></td></tr>
+                    <tr><td>VPU Patch Checksum</td><td>reach inside and hash only the <code>.dif</code></td></tr>
+                    <tr><td>ROM Checksum</td><td>hash the whole archive, <strong>unless the table is made by Stern</strong></td></tr>
+                    <tr><td>PUP Pack Checksum</td><td>hash the whole archive, and read its folder list to fill Archive Root</td></tr>
+                    <tr><td>Alt Sound Checksum</td><td>hash the whole archive, and read its folder list</td></tr>
+                    <tr><td>Color ROM Checksum</td><td>handle a <code>.pal</code> and <code>.vni</code> pair together</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <p><strong>Stern ROMs.</strong> When the loaded table's manufacturer is Stern, the ROM Checksum field also accepts a bare <code>.bin</code>, and dropping an archive scans it for the <code>.bin</code> inside. If the archive holds exactly one, that file alone is hashed. If it holds none or several, the whole archive is hashed instead, because there is no safe way to guess which one you meant. The status line always says which happened.</p>
+              <p><strong>Color ROM pairs.</strong> Dropping an archive holding both a <code>.pal</code> and a <code>.vni</code> fills both checksum slots at once and ticks PAL/VNI for you. A lone <code>.vni</code> goes to the second slot. Single files such as <code>.crz</code>, <code>.pac</code>, or <code>.cROMc</code> go to the first slot with PAL/VNI cleared.</p>
+              <p><strong>Additional ROMs</strong> use their own dialog, but the drop field inside it follows all the same rules, Stern included.</p>
+            </div>
+          </details>
+
+          <details>
+            <summary>Notes fields (8 fields)</summary>
+            <div class="help-doc-body">
+              <p>Main Notes, VPX Notes, Backglass Notes, ROM Notes, Color ROM Notes, PUP Pack Notes, Alt Sound Notes, and Patch Notes are free text for anything the person installing the table needs to know.</p>
+              <p>Notes are usually optional, with two exceptions that will stop you:</p>
+              <ul>
+                <li>A <strong>Bundled</strong> asset requires its Notes field, because Notes are the only thing it carries.</li>
+                <li>Filling any <strong>URL Override</strong> requires the matching Notes field, so nobody is handed a raw link with no explanation.</li>
+              </ul>
+            </div>
+          </details>
+
+          <details>
+            <summary>URL Override fields (6 fields, all under Advanced Config)</summary>
+            <div class="help-doc-body">
+              <p>Backglass, ROM, Color ROM, Alt Sound, and VPU Patch each have a URL Override, and Backglass also has an Image Override. Use one when the file lives somewhere the VPS database does not point to.</p>
+              <p>Two rules apply to all of them:</p>
+              <ul>
+                <li>A URL Override <strong>requires its matching Notes field.</strong></li>
+                <li>A URL Override <strong>conflicts with a selected VPS ID</strong> for the same asset. Use one or the other, never both. The builder flags it if you do.</li>
+              </ul>
+              <p>Long links are fine. If a link pushes the generated line past 120 characters, the builder adds the comment that keeps YAML linters quiet. That limit measures the finished line, not the link on its own, so a shorter link can still trip it.</p>
+            </div>
+          </details>
+
+          <details>
+            <summary>Version and Authors Override fields (7 fields)</summary>
+            <div class="help-doc-body">
+              <p><strong>Version Override</strong> appears on ROM, Color ROM, Alt Sound, and VPU Patch. <strong>Authors Override</strong> appears on Backglass, Alt Sound, and VPU Patch. Both do the same job: supply by hand a detail that would normally come from the VPS database.</p>
+              <p>You need them when a tab is in Override mode, since there is no database entry to read. A ROM URL Override specifically requires a ROM Version Override alongside it. A bundled ROM can have a Version Override on its own, with no URL, since it ships inside the table download.</p>
+              <p>Authors fields take a comma separated list. Type <code>name, name, name</code> and the builder splits it for you.</p>
+            </div>
+          </details>
+
+          <details>
+            <summary>Archive Root and Archive Format (PUP Pack and Alt Sound)</summary>
+            <div class="help-doc-body">
+              <p>These two assets ship as archives, and the installer needs to know two things: which folder inside the archive is the real root, and what kind of archive it is.</p>
+              <p><strong>You rarely type either.</strong> Drop the archive on that tab's checksum field and the builder reads the folder list into a dropdown beside Archive Root, then sets Archive Format from the file extension.</p>
+              <p>PUP Pack requires Version, Archive Root, and Archive Format whenever the tab is on, whether or not you used Override.</p>
+            </div>
+          </details>
+
+          <details>
+            <summary>Table Name, Manufacturer, and Year Override (Main tab, Advanced Config)</summary>
+            <div class="help-doc-body">
+              <p>These three correct the table's own details when the VPS database has them wrong, or formatted differently to how you want them published. Leave them empty and the database values are used.</p>
+              <p><strong>Manufacturer Override does more than rename things.</strong> The builder reads it when deciding manufacturer specific behavior, and it takes priority over the database. Setting it to <code>Stern</code> switches on the Stern ROM rules described in the checksum section, which is the intended way to fix a table the database has mislabelled. Capitalization does not matter.</p>
+            </div>
+          </details>
+
+          <details>
+            <summary>NSFW flags</summary>
+            <div class="help-doc-body">
+              <p>There is one NSFW control on the table strip and one on each asset row, and <strong>they are exclusive.</strong></p>
+              <p>Tick the table level NSFW and every per asset box is cleared and disabled, because flagging the whole table already covers everything inside it. The output carries a single <code>nsfw: true</code>.</p>
+              <p>Untick it and the per asset boxes come back, all unticked, so you can flag individual pieces instead.</p>
+            </div>
+          </details>
+
+          <details>
+            <summary>Everything else on the Main tab</summary>
+            <div class="help-doc-body">
+              <ul>
+                <li><strong>FPS</strong> sets the frame rate the table should run at. Numbers only.</li>
+                <li><strong>Wizard Disabled</strong> is ticked by default on a new table and after Clear section. Leave it as you find it unless you specifically want the installer wizard turned off for this table. Imported files and restored drafts keep whatever they arrived with.</li>
+                <li><strong>Tagline</strong> is the one line description shown alongside the table.</li>
+                <li><strong>Testers</strong> is a comma separated list of who tested the build.</li>
+                <li><strong>Tutorial VPS ID</strong> links a tutorial entry from the database, chosen from a dropdown.</li>
+              </ul>
+            </div>
+          </details>
+
+          <details>
+            <summary>Special controls: PAL/VNI, PUP Pack Required, Additional ROMs</summary>
+            <div class="help-doc-body">
+              <ul>
+                <li><strong>PAL/VNI</strong> on the Color ROM tab switches that tab into two checksum mode for Pin2DMD color files and enables Color ROM Checksum #2. Dropping a matching archive ticks it for you. Toggling it by hand keeps a checksum that came from a <code>.pal</code> file and clears anything else, since only a <code>.pal</code> is valid in both modes.</li>
+                <li><strong>PUP Pack Required</strong> marks the pack as mandatory rather than optional. It does <em>not</em> require you to select a PUP Pack ID.</li>
+                <li><strong>Additional ROMs</strong> on the ROM tab is for tables needing more than one ROM. Each entry opens its own dialog with its own VPS ID, checksum, and overrides. An entry cannot reuse the primary ROM's ID, and if the ROM tab is in Override mode the ID picker is switched off for additional entries too.</li>
+              </ul>
+            </div>
+          </details>
+
+          <details>
+            <summary>Validating, downloading, and starting over</summary>
+            <div class="help-doc-body">
+              <p>The YAML Generated Preview updates as you work, and its colored dot summarizes the whole build. Click the dot to jump to the first outstanding error. Green asset badges on the table strip jump to their tab.</p>
+              <p>A tab turns red only for errors. Warnings leave it green, and a tab stays green once its required fields are complete, even after you move away.</p>
+              <p><strong>Copy and Download stay blocked while any error remains.</strong> Warnings never block anything.</p>
+              <p><strong>Clear section</strong> at the bottom of a tab empties that tab but keeps its ID and its Bundled or Override state. <strong>Clear</strong> in the preview panel starts a whole new build. Your work autosaves as you go, and Recent keeps your build history.</p>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section class="help-tab-panel" id="helpPanelWalkthrough" role="tabpanel" aria-labelledby="helpTabWalkthrough" data-help-panel="walkthrough" hidden>
+        <p class="help-lede">Two tours of the real workspace. Either way this window closes and each step lights up the actual control it is describing.</p>
+        <button class="tour-launch-btn" id="startWalkthroughBtn" type="button">
+          <span class="tour-launch-icon" aria-hidden="true">&#9654;</span>
+          <span class="tour-launch-text">
+            <strong>Tour the app as it is</strong>
+            <small>Eleven steps, from searching for a table to downloading the YML. Explains without changing anything</small>
+          </span>
+        </button>
+        <button class="tour-launch-btn tour-launch-secondary" id="startWalkthroughDemoBtn" type="button">
+          <span class="tour-launch-icon" aria-hidden="true">&#9673;</span>
+          <span class="tour-launch-text">
+            <strong>Guided build with a demo table</strong>
+            <small>Eleven hands-on steps on Tales from the Crypt, one of only twelve tables carrying all seven asset types</small>
+          </span>
+        </button>
+        <p class="help-tour-note">Leave at any point with <kbd>Esc</kbd> or the Skip button. The tour itself never changes your build; only the demo button above loads anything, and it asks first if you already have a build open.</p>
+        <p class="help-tour-note"><strong>The two do different jobs.</strong> <em>Tour the app as it is</em> walks whatever you already have open and explains it, in any order you like, changing nothing; it adapts to the table you loaded, or tells you what would appear if you have not loaded one. <em>Guided build</em> loads Tales from the Crypt and <strong>holds your hand through building the file</strong>: the steps that ask you to do something stay locked until you have done it, then move on by themselves. Reopening a saved YML comes last there, because that mode is about building a new one.</p>
+        <p class="help-tour-note">The guided build covers a genuine trap along the way: VPU Patch entries are filed among a table's VPX files rather than in a category of their own, so that row stays empty until you select the exact VPX a patch applies to. On Tales from the Crypt that is VPX <strong>uVgZUZdK</strong>.</p>
+        <p class="help-tour-outline-label">The guided build, step by step:</p>
+        <ol class="help-tour-outline">
+          <li>Your table is loaded, and what the strip tells you</li>
+          <li>How the Assets Panel works, including row titles as links</li>
+          <li><strong>Choose the VPX</strong>, and why this one</li>
+          <li><strong>Select the VPU Patch</strong> that just appeared</li>
+          <li><strong>Fill in the other five asset rows</strong></li>
+          <li>The configuration tabs your choices unlocked</li>
+          <li><strong>Add a checksum</strong>, by dropping the file or pasting one</li>
+          <li>Advanced Config, and when you need it</li>
+          <li>The live YAML preview and its status dot</li>
+          <li>Validate, then download</li>
+          <li>Reopening the file later to edit it</li>
         </ol>
       </section>
-      <section class="help-tab-panel" id="helpPanelHelp" role="tabpanel" aria-labelledby="helpTabHelp" data-help-panel="help" hidden>
+
+      <section class="help-tab-panel" id="helpPanelFaq" role="tabpanel" aria-labelledby="helpTabFaq" data-help-panel="faq" hidden>
+        <div class="help-faq-list">
+          <details><summary>Why is Copy or Download blocked?</summary><p>At least one validation error remains. Warnings are allowed, but errors must be corrected. Click the colored dot in the preview panel to jump straight to the first one.</p></details>
+          <details><summary>Are dropped files uploaded anywhere?</summary><p>No. Checksums, archive folder lists, and imported YML files are all processed inside your browser. Nothing leaves your machine.</p></details>
+          <details><summary>Why are some configuration tabs disabled?</summary><p>A tab unlocks once you give the builder a reason to write that section: select a version for it, tick Bundled, or tick Override.</p></details>
+          <details><summary>Why is the VPU Patch row always empty?</summary><p>Usually because of the VPX you picked, not a fault. Patches are stored among a table's VPX files rather than as their own category, and each one names the VPX it applies to. The row fills in only when that exact VPX is selected. Tales from the Crypt is a good example: choose VPX <code>uVgZUZdK</code> and the patch appears; choose any other and it does not.</p></details>
+          <details><summary>What does the database popup mean?</summary><p>It confirms search is using the latest published Virtual Pinball Spreadsheet database.</p></details>
+          <details><summary>Why did my ROM archive hash the whole file instead of the ROM inside it?</summary><p>Scanning inside an archive only happens where the target is unambiguous. On a Stern table the builder looks for one <code>.bin</code>; if the archive holds none or several, it hashes the archive itself rather than guess. The status line under the field says which it did.</p></details>
+          <details><summary>Why is there an error dot on a field I cannot even type in?</summary><p>When an error cannot be traced to a specific field, the dot lands on that tab's first read-only field, which is usually a VPS ID. Something else on the tab is the real cause. A long URL elsewhere in the build is a common culprit.</p></details>
+          <details><summary>I ticked Bundled, so why is it asking for a URL?</summary><p>It should not be. Bundled only needs Notes; Override is the one requiring every Advanced Config field. If you see this, it is a genuine bug worth reporting.</p></details>
+          <details><summary>Does my work survive closing the tab?</summary><p>Yes. The active build autosaves, and Recent keeps a history of earlier builds.</p></details>
+        </div>
+      </section>
+
+      <section class="help-tab-panel" id="helpPanelHotkeys" role="tabpanel" aria-labelledby="helpTabHotkeys" data-help-panel="hotkeys" hidden>
         <p>The workspace autosaves the active build. Green asset badges jump directly to their configuration tabs, the YAML Preview status dot opens the first current error, and dropped YML files can be reopened for editing.</p>
         <div class="shortcut-grid">
           <span><kbd>/</kbd> Focus search</span>
@@ -164,14 +366,7 @@
           <span><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Enter</kbd> Download</span>
           <span><kbd>Esc</kbd> Close an open dialog</span>
         </div>
-      </section>
-      <section class="help-tab-panel" id="helpPanelFaq" role="tabpanel" aria-labelledby="helpTabFaq" data-help-panel="faq" hidden>
-        <div class="help-faq-list">
-          <details><summary>Why is Copy or Download blocked?</summary><p>At least one validation error remains. Warnings are allowed, but errors must be corrected.</p></details>
-          <details><summary>Are dropped files uploaded?</summary><p>No. Checksums, archive folders, and imported YML files are processed in your browser.</p></details>
-          <details><summary>Why are some configuration tabs disabled?</summary><p>Asset-specific tabs become available after selecting that asset or marking it as bundled.</p></details>
-          <details><summary>What does the database popup mean?</summary><p>It verifies that search is using the latest published Virtual Pinball Spreadsheet database.</p></details>
-        </div>
+        <p class="help-hotkey-note">Inside the guided tour: <kbd>&rarr;</kbd> and <kbd>&larr;</kbd> move between steps, <kbd>Esc</kbd> leaves the tour. On these help tabs, <kbd>&larr;</kbd> and <kbd>&rarr;</kbd> move between tabs whenever a tab has focus.</p>
       </section>
     </div>
   </dialog>
@@ -198,9 +393,11 @@
     <div class="dialog-body" id="recentBody"></div>
   </dialog>
 
+  <script src="js.src/appVersion.js"></script>
   <script src="js.src/fields.js"></script>
   <script src="js.src/utilities.js"></script>
   <script src="js.src/yamlFeatureSupport.js"></script>
+  <script src="js.src/validationRules.js"></script>
   <script src="js.src/apiHelper.js"></script>
   <script src="js.src/vpsDbToast.js"></script>
   <script src="js.src/searchHelper.js"></script>
@@ -208,8 +405,8 @@
   <script src="js.src/uiEnhancements.js"></script>
   <script src="js.src/productionFeatureRuntime.js"></script>
   <script src="js.src/additionalRomsController.js"></script>
+  <script src="js.src/vpxMagicController.js"></script>
   <script src="js.src/checksumAdditionalController.js"></script>
-  <script src="js.src/featureValidationController.js"></script>
   <script src="js.src/v090Enhancements.js"></script>
   <script src="js.src/v091Corrections.js"></script>
   <script src="js.src/productionUiExtensions.js"></script>
@@ -221,6 +418,7 @@
   <script src="js.src/ymlFeatureImportBridge.js"></script>
   <script src="js.src/ymlImport.js"></script>
   <script src="js.src/v0102Fixes.js"></script>
+  <script src="js.src/walkthroughController.js"></script>
   <script src="js.src/nativeTooltipCleanup.js"></script>
 </body>
 </html>

@@ -159,11 +159,12 @@
 }
 .checksum-inline-hint em { font-style: italic; }
 
-/* Keep PUP Required aligned with the visible Archive Root control, not the full picker stack. */
+/* Centred in its grid cell, changed 2026-08-21 at Jason's request. It used to
+   be top-aligned (align-self: start + padding-top) to line up with the Archive
+   Root input rather than the whole picker stack. */
 .field-pup-required {
-  align-self: start;
+  align-self: center;
   min-height: 36px;
-  padding-top: 5px;
 }
 .field-pup-required .checkbox-row { min-height: 36px; align-items: center; }
 
@@ -190,6 +191,37 @@
 .field-error-dot[data-tooltip]:hover::before,
 .field-error-dot[data-tooltip]:focus-visible::before { display: block; }
 .field-error-dot { cursor: help; }
+
+/* A dot drawn from the rulebook carries a real tooltip element instead, one
+   line per problem with its headline in bold (decision 5, piece 2), because a
+   pseudo-element's text cannot be partly bold. Same box in the same place; the
+   pseudo tooltip above steps aside for it. */
+.field-error-dot[data-tooltip]:has(> .error-dot-tip)::before { content: none; }
+.error-dot-tip {
+  position: absolute;
+  z-index: 180;
+  right: -2px;
+  bottom: calc(100% + 8px);
+  display: none;
+  width: max-content;
+  max-width: min(260px, calc(100vw - 32px));
+  padding: 6px 8px;
+  border: 1px solid color-mix(in srgb, var(--state-red) 55%, var(--panel-line));
+  border-radius: 7px;
+  background: var(--panel-raised);
+  box-shadow: var(--shadow-lift);
+  color: var(--text);
+  font: 500 10.5px/1.35 "Inter", sans-serif;
+  letter-spacing: 0;
+  text-align: left;
+  text-transform: none;
+  white-space: normal;
+}
+.error-dot-tip-line { display: block; }
+.error-dot-tip-line + .error-dot-tip-line { margin-top: 4px; }
+.error-dot-tip strong { font-weight: 700; }
+.field-error-dot:hover > .error-dot-tip,
+.field-error-dot:focus-visible > .error-dot-tip { display: block; }
 
 #previewStatusDot { cursor: pointer; }
 

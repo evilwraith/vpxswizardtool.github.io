@@ -76,16 +76,6 @@
   max-width: 100%;
 }
 
-/* The VPU Patch ID is informational and must never display field-level validation styling. */
-#config-panel-vpuPatch .field-compact-id.has-field-error > .readonly-id,
-.field-grid-vpuPatch .field-compact-id.has-field-error > .readonly-id {
-  border-color: var(--panel-line) !important;
-}
-#config-panel-vpuPatch .field-compact-id > .field-error-dot,
-.field-grid-vpuPatch .field-compact-id > .field-error-dot {
-  display: none !important;
-}
-
 /* Allow configuration tooltips to paint above neighboring controls and panel edges. */
 .configuration-tabs,
 .config-tab-panel,
@@ -105,6 +95,7 @@
   z-index: 480;
 }
 .field-error-dot[data-tooltip]::before,
+.error-dot-tip,
 .control-tooltip {
   z-index: 500;
 }

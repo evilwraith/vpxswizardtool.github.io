@@ -136,6 +136,8 @@
         return { data, source: baseUrl };
       } catch (error) {
         failures.push(`${baseUrl}: ${error.message}`);
+        // Console output only; a stray % in the URL could at worst garble this log line.
+        // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring
         console.warn(`Failed to fetch VPS DB from ${baseUrl}`, error);
       }
     }

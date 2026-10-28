@@ -6,6 +6,14 @@
 .asset-row {
   display: grid;
   grid-template-columns: 94px minmax(190px, 1fr) 140px 88px 72px;
+  /* Pin the first row track. Without this it STRETCHES to fill min-height while
+     it is the only track (35px), then content-sizes the moment the info panel
+     adds a second one (34px, the select's height) - and `align-items: center`
+     re-centres everything in a track 1px shorter, so every control in the row
+     jumps up half a pixel as the panel opens. Fixed 2026-08-27.
+     35px is the content box: min-height 52 - 16px padding - 1px border. Change
+     any of those three and this needs changing with them. */
+  grid-template-rows: minmax(35px, auto);
   align-items: center;
   gap: 10px;
   min-height: 52px;
@@ -95,7 +103,13 @@ a.asset-name { color: inherit; text-decoration: none; cursor: pointer; }
   color: var(--text-faint);
   font-size: 11px;
 }
+/* Open state is the red outline and nothing else. The label is identical in
+   both states, so the button cannot change width as it toggles. */
+.asset-info-button.is-open { border-color: var(--danger); }
 .asset-info-button:not(:disabled):hover { border-color: var(--accent); color: var(--accent); }
+/* An open button stays red on hover - the accent border would otherwise hide
+   the one signal that says clicking again closes the panel. */
+.asset-info-button.is-open:not(:disabled):hover { border-color: var(--danger); }
 .asset-info-button:disabled {
   opacity: 0.42;
   cursor: not-allowed;
@@ -169,16 +183,86 @@ a.asset-name { color: inherit; text-decoration: none; cursor: pointer; }
 .asset-detail {
   grid-column: 2 / -1;
   display: none;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 8px 14px;
+  /* Five columns: VPS ID, Version, Created, Authors, Format. The four short
+     ones are pinned at 110px and Authors takes whatever is left - it is the
+     only column whose content genuinely varies in length, so equal tracks just
+     starved it while VPS ID and Version sat half empty. */
+  grid-template-columns: 110px 110px 110px minmax(0, 1fr) 110px;
+  gap: 8px 12px;
   padding: 8px 10px 2px;
   border-top: 1px dashed var(--panel-line);
   color: var(--text-muted);
   font-size: 11.5px;
 }
 .asset-row.details-open .asset-detail { display: grid; }
-.asset-detail strong { display: block; margin-bottom: 2px; color: var(--text-faint); font-size: 10px; text-transform: uppercase; }
-.asset-comment { grid-column: 1 / -1; padding: 8px; border-radius: 7px; background: var(--panel-raised); }
+.asset-detail strong {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--text-faint);
+  font-size: 10px;
+  text-transform: uppercase;
+  /* Never let a label wrap: the row height is guaranteed by arithmetic below,
+     and a two-line label would break it. */
+  white-space: nowrap;
+}
+
+/* The row stops growing at 65px, and it is held there BY CONSTRUCTION rather
+   than by clipping. That matters: the overflow tooltip is an absolutely
+   positioned ::after inside the cell, so an overflow:hidden anywhere above it
+   would clip the tooltip along with the text it exists to reveal.
+   The arithmetic, which is why the line-height is pinned rather than inherited:
+     label      10px x 1.2  = 12px, + 2px margin        = 14px
+     value    11.5px x 1.35 = 15.5px x 2 lines          = 31px
+     padding    8px top + 2px bottom                    = 10px
+     border     1px dashed top                          =  1px
+                                                    total 56px  (cap 65px)
+   Changing any of those numbers is what would break the cap, so change them
+   together. Nothing is exempt: the asset comment used to sit outside this
+   budget and was removed on 2026-08-27, so the row is now hard-capped. */
+.asset-detail-cell { position: relative; min-width: 0; }
+.asset-detail-value {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  line-height: 1.35;
+  /* A single long author name or filename must wrap rather than push the
+     column wider than its track. */
+  overflow-wrap: anywhere;
+}
+
+/* No Format column: the template simply loses its last track and Authors keeps
+   taking the remainder. Redefining the template beats a span rule now that the
+   tracks are explicit - a span would leave an empty 110px column behind. */
+.asset-detail-no-format { grid-template-columns: 110px 110px 110px minmax(0, 1fr); }
+
+/* Clamped values recover their full text on hover. data-tooltip is set by
+   uiEnhancements.js only when the value is actually clipped. */
+.asset-detail-cell[data-tooltip] .asset-detail-value { cursor: help; }
+.asset-detail-cell[data-tooltip]::after {
+  position: absolute;
+  z-index: 520;
+  bottom: calc(100% + 4px);
+  left: 0;
+  display: none;
+  width: max-content;
+  max-width: min(320px, calc(100vw - 32px));
+  padding: 5px 7px;
+  border: 1px solid var(--panel-line-strong);
+  border-radius: 6px;
+  background: var(--panel-raised);
+  box-shadow: var(--shadow-lift);
+  color: var(--text);
+  content: attr(data-tooltip);
+  font: 600 10.5px/1.35 "Inter", sans-serif;
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: normal;
+}
+.asset-detail-cell[data-tooltip]:hover::after,
+.asset-detail-cell[data-tooltip]:focus-within::after { display: block; }
+
 .broken-option { color: var(--danger); }
 
 .accordion-stack { display: grid; gap: 8px; }
@@ -337,6 +421,12 @@ a.asset-name { color: inherit; text-decoration: none; cursor: pointer; }
   .asset-status { grid-column: 3; grid-row: 1 / span 2; align-self: center; margin-top: 0; }
   .asset-info-button { grid-column: 4; grid-row: 1 / span 2; }
   .asset-detail { grid-column: 1 / -1; }
+  /* Below this width five columns are unreadable, so the grid goes back to
+     reflowing. The clamp comes off with it: a touch device has no hover, so
+     clamped text there would be hidden with no way to reveal it. */
+  .asset-detail,
+  .asset-detail-no-format { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+  .asset-detail-value { display: block; -webkit-line-clamp: none; line-clamp: none; }
   .field-grid { grid-template-columns: 1fr; }
   .field-wide { grid-column: auto; }
   .advanced-fields { grid-column: auto; }
@@ -583,7 +673,9 @@ a.asset-name { color: inherit; text-decoration: none; cursor: pointer; }
   text-transform: none;
   white-space: normal;
 }
-.checksum-drop-status[data-tooltip]:hover::after { display: block; }
+/* Hovering the row, which spans the whole field, used to be enough to pop
+   this. Only the truncated text should trigger it. */
+.checksum-drop-status[data-tooltip]:has(.checksum-drop-hint:hover)::after { display: block; }
 .checksum-drop-hint.error { color: var(--danger); }
 .checksum-loading-track {
   display: none;
@@ -637,26 +729,17 @@ a.asset-name { color: inherit; text-decoration: none; cursor: pointer; }
 .asset-status.state-red .status-dot { background: var(--danger); box-shadow: 0 0 0 3px var(--danger-soft); }
 .asset-status.state-neutral { color: var(--text-faint); opacity: 0.62; }
 
-/* Tab issue notifications */
+/* Tab issue state. The red/amber colour and the inset top strip carry this on
+   their own - there is deliberately no separate alert dot. */
 .config-tab { position: relative; }
-.config-tab-alert {
-  position: absolute;
-  top: 5px;
-  right: 6px;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-}
 .config-tab.has-error {
   color: var(--danger);
   box-shadow: inset 0 3px 0 var(--danger);
 }
-.config-tab.has-error .config-tab-alert { background: var(--danger); box-shadow: 0 0 0 3px var(--danger-soft); }
 .config-tab.has-warning {
   color: var(--accent);
   box-shadow: inset 0 3px 0 var(--accent);
 }
-.config-tab.has-warning .config-tab-alert { background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 /* A tab with every required field complete stays green whether or not it's
    the active tab — completion is a property of the tab, not of focus. */
 .config-tab.has-ready { box-shadow: inset 0 3px 0 var(--success); }
@@ -824,19 +907,92 @@ input[type="checkbox"]:disabled { opacity: 0.45; cursor: not-allowed; }
   background: transparent;
 }
 
-/* PUP archive directory browser */
+/* Archive directory browser — shared by the PUP Pack and Alt Sound archive
+   roots. The trigger is a <button>, not a <select>: a native dropdown closes
+   the moment LOAD MORE is chosen, which cost a second click to reopen. */
 .archive-directory-select {
   width: 100%;
-  min-height: 32px;
+  min-height: 36px;
   margin-top: 6px;
   border: 1px solid var(--panel-line);
   border-radius: 7px;
-  background: var(--panel-soft);
-  padding: 5px 30px 5px 9px;
-  color: var(--text-muted);
-  font-size: 11.5px;
+  background: var(--panel-raised);
+  padding: 8px 30px 8px 9px;
+  color: var(--text);
+  font: 12.5px "JetBrains Mono", monospace;
 }
 .archive-directory-select:disabled { opacity: 0.55; cursor: not-allowed; }
+.archive-directory-picker { position: relative; display: block; }
+.archive-directory-trigger {
+  display: flex;
+  align-items: center;
+  position: relative;
+  padding-right: 26px;
+  text-align: left;
+}
+.archive-directory-trigger:disabled { cursor: not-allowed; }
+.archive-directory-trigger[aria-expanded="true"] { border-color: var(--accent); }
+.archive-directory-trigger-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.archive-directory-chevron {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  transform: translateY(-50%);
+  font-size: 10px;
+  line-height: 1;
+  pointer-events: none;
+}
+/* position:fixed so the panel escapes .config-accordion's overflow:hidden.
+   Placed from the trigger's rect in JS, above every tooltip (max 700) and
+   below the walkthrough overlay (900). */
+.archive-directory-panel {
+  position: fixed;
+  z-index: 800;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--panel-line-strong);
+  border-radius: 10px;
+  background: var(--panel-raised);
+  box-shadow: var(--shadow-lift);
+}
+.archive-directory-option,
+.archive-directory-more {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  border: 0;
+  border-bottom: 1px solid var(--panel-line);
+  background: transparent;
+  padding: 7px 10px;
+  color: var(--text);
+  font: 12.5px "JetBrains Mono", monospace;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.archive-directory-option:last-child { border-bottom: 0; }
+.archive-directory-option:hover,
+.archive-directory-option.is-active,
+.archive-directory-more:hover,
+.archive-directory-more.is-active { background: var(--accent-soft); }
+.archive-directory-option.is-selected { color: var(--accent); font-weight: 600; }
+/* Sticky so LOAD MORE stays reachable without scrolling to the bottom. */
+.archive-directory-more {
+  position: sticky;
+  bottom: 0;
+  border-bottom: 0;
+  border-top: 1px solid var(--panel-line-strong);
+  background: var(--panel-soft);
+  color: var(--text-muted);
+  font-weight: 600;
+  text-align: center;
+}
 
 /* State colors remain readable in both themes. */
 .asset-status.state-green { color: var(--state-green); }

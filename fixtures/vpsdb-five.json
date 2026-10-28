@@ -1,0 +1,2519 @@
+[
+  {
+    "lastCreatedAt": 1733875200000,
+    "broken": false,
+    "name": "Teenage Mutant Ninja Turtles (Stern / Data East remix)",
+    "type": "SS",
+    "designers": [],
+    "year": 2024,
+    "id": "uA2t19UU2O",
+    "manufacturer": "Original",
+    "players": 4,
+    "tableFiles": [
+      {
+        "game": {
+          "id": "uA2t19UU2O",
+          "name": "Teenage Mutant Ninja Turtles (Stern / Data East remix)"
+        },
+        "tableFormat": "VPX",
+        "imgUrl": "https://virtualpinballspreadsheet.github.io/vps-db/img/eiKQUmT6oX_1732119944684.webp",
+        "version": "2.86",
+        "updatedAt": 1733846372749,
+        "id": "eiKQUmT6oX",
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/22296-teenage-mutant-ninja-turtles-stern-data-east-remix-v20-table/"
+          }
+        ],
+        "createdAt": 1733875200000,
+        "authors": [
+          "Cheese3075",
+          "Bigus1",
+          "Pattyg234",
+          "Redbone"
+        ]
+      }
+    ],
+    "updatedAt": 1733846372749,
+    "theme": [],
+    "wheelArtFiles": [
+      {
+        "id": "gkBjrBeHq9",
+        "version": "2.0",
+        "createdAt": 1757272187000,
+        "updatedAt": 1757272187000,
+        "authors": [
+          "Rickochet"
+        ],
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/26144-teenage-mutant-ninja-turtles-animated-glass-orb/"
+          }
+        ],
+        "comment": "Animated Glass Orb",
+        "game": {
+          "id": "uA2t19UU2O",
+          "name": "Teenage Mutant Ninja Turtles (Stern / Data East remix)"
+        }
+      }
+    ]
+  },
+  {
+    "name": "The Lord of the Rings",
+    "imgUrl": "https://virtualpinballspreadsheet.github.io/vps-db/img/2923c6ffc7d0efdcc5d3eec71721ffb3_b2s_1638093749073.webp",
+    "theme": [
+      "Fantasy",
+      "Licensed Theme",
+      "Movie",
+      "Wizards"
+    ],
+    "tutorialFiles": [
+      {
+        "url": "https://vpuniverse.com/files/file/26887-lord-of-the-rings-stern-2003-vpx-video-instruction/",
+        "game": {
+          "id": "5RybGX4Q",
+          "name": "The Lord of the Rings"
+        },
+        "updatedAt": 1759664330018,
+        "youtubeId": "lgM8p3Ro968",
+        "authors": [
+          "Pinball Tutorials",
+          "Kongedam",
+          "Odradek"
+        ],
+        "urls": [
+          {
+            "url": "https://www.youtube.com/watch?v=lgM8p3Ro968"
+          }
+        ],
+        "id": "5qwHwININZ",
+        "title": "The One Pinball Tutorial: Mastering Lord of the Rings (Stern 2003)",
+        "createdAt": 1759664307968
+      },
+      {
+        "game": {
+          "id": "5RybGX4Q",
+          "name": "The Lord of the Rings"
+        },
+        "updatedAt": 1705710415684,
+        "youtubeId": "a9PnCwcYPwY",
+        "authors": [
+          "PAPA Pinball",
+          "Bowen Kerins"
+        ],
+        "id": "CqDcjr5oxZ",
+        "title": "Lord of the Rings Pinball - The Valinor Strategy",
+        "createdAt": 1705710405443
+      }
+    ],
+    "updatedAt": 1774694341793,
+    "manufacturer": "Stern",
+    "altColorFiles": [
+      {
+        "createdAt": 1692576000000,
+        "folder": "lotr",
+        "updatedAt": 1710172624408,
+        "game": {
+          "id": "5RybGX4Q",
+          "name": "The Lord of the Rings"
+        },
+        "fileName": "pin2dmd.pac",
+        "type": "Pin2dmd",
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/7603-lord-of-the-rings-lotr/"
+          }
+        ],
+        "authors": [
+          "Redrum",
+          "Terranigma"
+        ],
+        "version": "2.6",
+        "id": "afptXEiuqn"
+      },
+      {
+        "createdAt": 1593043200000,
+        "type": "Pin2dmd",
+        "updatedAt": 1707485741314,
+        "game": {
+          "id": "5RybGX4Q",
+          "name": "The Lord of the Rings"
+        },
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/5800-lord-of-the-rings-beta/"
+          }
+        ],
+        "authors": [
+          "Rappelbox"
+        ],
+        "version": "0.8.5",
+        "id": "GUjHrksg"
+      }
+    ],
+    "id": "5RybGX4Q",
+    "type": "SS",
+    "altSoundFiles": [
+      {
+        "createdAt": 1787185701000,
+        "updatedAt": 1787185701000,
+        "game": {
+          "id": "5RybGX4Q",
+          "name": "The Lord of the Rings"
+        },
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/31489-lotr_alttablesound_12/"
+          }
+        ],
+        "authors": [
+          "laurDad85"
+        ],
+        "version": "1.2",
+        "id": "IH_l9WSrFb"
+      },
+      {
+        "createdAt": 1761436800000,
+        "comment": "French Altsound",
+        "updatedAt": 1774353596389,
+        "game": {
+          "id": "5RybGX4Q",
+          "name": "The Lord of the Rings"
+        },
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/27050-lord-of-the-ring-vf-altsound/"
+          }
+        ],
+        "authors": [
+          "Quedreux"
+        ],
+        "version": "1.0.0",
+        "id": "eurzPSooAI"
+      },
+      {
+        "createdAt": 1750809600000,
+        "comment": "Flipsound customized sound mod set for LotR VPW 1.6",
+        "updatedAt": 1790076500791,
+        "game": {
+          "id": "5RybGX4Q",
+          "name": "The Lord of the Rings"
+        },
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/25905-flipsound-mod-lotr"
+          }
+        ],
+        "authors": [
+          "laurDad85"
+        ],
+        "version": "1.1",
+        "id": "lpmr8zv2cO"
+      },
+      {
+        "createdAt": 1727568000000,
+        "updatedAt": 1728656468285,
+        "game": {
+          "id": "5RybGX4Q",
+          "name": "The Lord of the Rings"
+        },
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/21782-lord-of-the-rings-stern-2003-altsound/"
+          }
+        ],
+        "authors": [
+          "Chrispring"
+        ],
+        "version": "1.0.0",
+        "id": "6vSAjw2Gmk"
+      },
+      {
+        "createdAt": 1694304000000,
+        "updatedAt": 1725543143693,
+        "game": {
+          "id": "5RybGX4Q",
+          "name": "The Lord of the Rings"
+        },
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/15842-the-lord-of-the-rings-altsound-stern-2003/"
+          }
+        ],
+        "authors": [
+          "Namine"
+        ],
+        "version": "1.5.0",
+        "id": "u2J4yNUqo2"
+      },
+      {
+        "urls": [
+          {
+            "url": "https://pinsound-community.org/forum/index.php?/files/category/92-the-lord-of-the-rings/"
+          }
+        ],
+        "authors": [
+          "Hawknole",
+          "Tilt",
+          "Gerald",
+          "TheWool"
+        ],
+        "version": "1.0",
+        "game": {
+          "id": "5RybGX4Q",
+          "name": "The Lord of the Rings"
+        },
+        "updatedAt": 1545174000000,
+        "id": "rYewEAl0"
+      }
+    ],
+    "pupPackFiles": [
+      {
+        "game": {
+          "name": "The Lord of the Rings",
+          "id": "5RybGX4Q"
+        },
+        "updatedAt": 1684068131468,
+        "version": "1.0.1",
+        "authors": [
+          "Takut"
+        ],
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/14206-lord-of-the-rings-puppack/"
+          }
+        ],
+        "id": "nM-kQQy3SN",
+        "createdAt": 1684068117537
+      },
+      {
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/7215-lord-of-the-rings-el-se%C3%B1or-de-los-anillos-dual-pup-pack-english-espa%C3%B1ol/"
+          }
+        ],
+        "authors": [
+          "Mikeleonheart",
+          "Oker",
+          "DeathInc"
+        ],
+        "version": "1.0.0",
+        "game": {
+          "name": "The Lord of the Rings",
+          "id": "5RybGX4Q"
+        },
+        "updatedAt": 1648716535007,
+        "id": "I2A0SJCt"
+      }
+    ],
+    "ipdbUrl": "http://www.ipdb.org/machine.cgi?id=4858",
+    "romFiles": [
+      {
+        "urls": [
+          {
+            "url": "https://sternpinball.com/?post_type=game_code&s=rings"
+          }
+        ],
+        "authors": [
+          "Stern"
+        ],
+        "version": "lotr",
+        "game": {
+          "id": "5RybGX4Q",
+          "name": "The Lord of the Rings"
+        },
+        "updatedAt": 1509577200000,
+        "id": "mtm4zV33"
+      }
+    ],
+    "topperFiles": [
+      {
+        "createdAt": 1770627147000,
+        "updatedAt": 1770627147000,
+        "game": {
+          "name": "The Lord of the Rings",
+          "id": "5RybGX4Q"
+        },
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/28886-lord-of-the-rings-stern-2003-topper-video/"
+          }
+        ],
+        "authors": [
+          "Guet35"
+        ],
+        "version": "1.0.0",
+        "id": "85D24QDuLb"
+      },
+      {
+        "createdAt": 1722124800000,
+        "updatedAt": 1722269884310,
+        "game": {
+          "name": "The Lord of the Rings",
+          "id": "5RybGX4Q"
+        },
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/21150-lord-of-the-rings-stern-2003-topper-video/"
+          }
+        ],
+        "authors": [
+          "Purcho"
+        ],
+        "version": "1.0",
+        "id": "ysfpTmdjlK"
+      },
+      {
+        "createdAt": 1670173903725,
+        "updatedAt": 1670173909661,
+        "game": {
+          "name": "The Lord of the Rings",
+          "id": "5RybGX4Q"
+        },
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/12084-lord-of-the-ring-topper-video/"
+          }
+        ],
+        "authors": [
+          "Bernillo"
+        ],
+        "version": "1.0",
+        "id": "sosgsQ5RUc"
+      },
+      {
+        "game": {
+          "name": "The Lord of the Rings",
+          "id": "5RybGX4Q"
+        },
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/4749-topper-videos/"
+          }
+        ],
+        "version": "1.1.3",
+        "authors": [
+          "Bambi Plattfuss"
+        ],
+        "updatedAt": 1498514400000,
+        "id": "ihvp1ulv"
+      }
+    ],
+    "ruleFiles": [
+      {
+        "createdAt": 1790100800000,
+        "updatedAt": 1790100800000,
+        "game": {
+          "name": "The Lord of the Rings",
+          "id": "5RybGX4Q"
+        },
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/31993-lord-of-the-rings-stern-2003-instruction-card/"
+          }
+        ],
+        "authors": [
+          "kilazz"
+        ],
+        "version": "1.0.0",
+        "id": "zQba_mv1NJ"
+      },
+      {
+        "createdAt": 1702938009994,
+        "updatedAt": 1702938014086,
+        "game": {
+          "name": "The Lord of the Rings",
+          "id": "5RybGX4Q"
+        },
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/17607-lord-of-the-rings-stern-2003-instruction-card/"
+          }
+        ],
+        "authors": [
+          "FrankEnstein"
+        ],
+        "version": "1.0.0",
+        "id": "BGOQ5ySGT_"
+      },
+      {
+        "id": "0tONPqQ3u5",
+        "authors": [
+          "pascal40"
+        ],
+        "updatedAt": 1790741532578,
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/32237-carte-dinstructions-r%C3%A8gles-en-fran%C3%A7ais-de-lord-of-the-rings/"
+          }
+        ],
+        "comment": "French",
+        "game": {
+          "name": "The Lord of the Rings",
+          "id": "5RybGX4Q"
+        },
+        "version": "1.0.0",
+        "createdAt": 1790351329000
+      }
+    ],
+    "players": 4,
+    "wheelArtFiles": [
+      {
+        "createdAt": 1759279740000,
+        "comment": "Logo",
+        "updatedAt": 1760819005145,
+        "game": {
+          "name": "The Lord of the Rings",
+          "id": "5RybGX4Q"
+        },
+        "urls": [
+          {
+            "url": "https://www.vpforums.org/index.php?app=downloads&showfile=19359"
+          }
+        ],
+        "authors": [
+          "*HR*"
+        ],
+        "version": "1.0",
+        "id": "i4zwY1uTOh"
+      },
+      {
+        "createdAt": 1753615236000,
+        "comment": "Animated Glass Orb",
+        "updatedAt": 1754110256625,
+        "game": {
+          "name": "The Lord of the Rings",
+          "id": "5RybGX4Q"
+        },
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/26315-lord-of-the-rings-the-stern-2003-animated-glass-orb/"
+          }
+        ],
+        "authors": [
+          "Rickochet"
+        ],
+        "version": "1.0.0",
+        "id": "H0j3tfJCpU"
+      },
+      {
+        "createdAt": 1670112000000,
+        "updatedAt": 1710681324081,
+        "game": {
+          "name": "The Lord of the Rings",
+          "id": "5RybGX4Q"
+        },
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/8862-the-lord-of-the-rings-wheel/"
+          }
+        ],
+        "authors": [
+          "Balutito"
+        ],
+        "version": "1.0.0",
+        "id": "XQdiCWI63r"
+      },
+      {
+        "createdAt": 1651881600000,
+        "comment": "Valinor Edition",
+        "updatedAt": 1710681126817,
+        "game": {
+          "name": "The Lord of the Rings",
+          "id": "5RybGX4Q"
+        },
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/10177-lord-of-the-rings-valinor-edition-stern-2003-wheel/"
+          }
+        ],
+        "authors": [
+          "CainArg"
+        ],
+        "version": "1.0.1",
+        "id": "Sp4U3gaxqs"
+      },
+      {
+        "createdAt": 1644537600000,
+        "updatedAt": 1710681353006,
+        "game": {
+          "name": "The Lord of the Rings",
+          "id": "5RybGX4Q"
+        },
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/9105-the-lord-of-the-rings-glowing-ring-wheel/"
+          }
+        ],
+        "authors": [
+          "Pinballfan2018"
+        ],
+        "version": "1",
+        "id": "OarxNCJSjM"
+      },
+      {
+        "createdAt": 1625443200000,
+        "comment": "Animated",
+        "updatedAt": 1710681102080,
+        "game": {
+          "name": "The Lord of the Rings",
+          "id": "5RybGX4Q"
+        },
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/6846-lord-of-the-rings-animated-wheel/"
+          }
+        ],
+        "authors": [
+          "Mitshiba"
+        ],
+        "version": "1.1.1",
+        "id": "MZCAfM7aor"
+      },
+      {
+        "game": {
+          "name": "The Lord of the Rings",
+          "id": "5RybGX4Q"
+        },
+        "urls": [
+          {
+            "url": "https://mega.nz/#F!p3hREDgB!pEWMJvVQ7t3Sv_TmrxdU-w!52AzHIDR"
+          }
+        ],
+        "version": "1.0",
+        "authors": [
+          "Calium"
+        ],
+        "updatedAt": 1517439600000,
+        "id": "rmd_lfLH"
+      }
+    ],
+    "designers": [
+      "George Gomez"
+    ],
+    "povFiles": [
+      {
+        "comment": "",
+        "updatedAt": 1744893248903,
+        "game": {
+          "name": "The Lord of the Rings",
+          "id": "5RybGX4Q"
+        },
+        "urls": [
+          {
+            "url": "https://bit.ly/POVs_RaJo"
+          }
+        ],
+        "authors": [
+          "RajoJoey"
+        ],
+        "version": "1.0",
+        "id": "cVU2uYFF"
+      },
+      {
+        "createdAt": 1733184000000,
+        "comment": "10.8 Cabinet POV for Valinor Edition",
+        "updatedAt": 1751274687698,
+        "game": {
+          "name": "The Lord of the Rings",
+          "id": "5RybGX4Q"
+        },
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/22561-lord-of-the-rings-valinor-edition-cabinet-pov/"
+          }
+        ],
+        "authors": [
+          "LoadedWeapon"
+        ],
+        "version": "1.0.0",
+        "id": "SXeClutQYf"
+      }
+    ],
+    "MPU": "Stern Whitestar (modified)",
+    "year": 2003,
+    "b2sFiles": [
+      {
+        "game": {
+          "id": "5RybGX4Q",
+          "name": "The Lord of the Rings"
+        },
+        "updatedAt": 1782911621789,
+        "version": "1.0.0",
+        "authors": [
+          "Autobott"
+        ],
+        "imgUrl": "https://virtualpinballspreadsheet.github.io/vps-db/img/XMkkq3jwbg_1782911574603.webp",
+        "features": [
+          "2Screens",
+          "3Screens",
+          "FullDMD"
+        ],
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/31021-lord-of-the-rings-stern-2003-alt-b2s-full-dmd-2-screen/"
+          }
+        ],
+        "id": "XMkkq3jwbg",
+        "createdAt": 1782911567194
+      },
+      {
+        "game": {
+          "id": "5RybGX4Q",
+          "name": "The Lord of the Rings"
+        },
+        "updatedAt": 1734884113228,
+        "version": "1.0.0",
+        "authors": [
+          "HauntFreaks"
+        ],
+        "imgUrl": "https://virtualpinballspreadsheet.github.io/vps-db/img/giiZmCpzNl_1734884110965.webp",
+        "features": [
+          "2Screens",
+          "FullDMD"
+        ],
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/22544-lord-of-the-rings-stern-2003-alternate-b2s-full-dmd/"
+          }
+        ],
+        "id": "giiZmCpzNl",
+        "createdAt": 1733011200000
+      },
+      {
+        "game": {
+          "id": "5RybGX4Q",
+          "name": "The Lord of the Rings"
+        },
+        "updatedAt": 1701178756454,
+        "version": "1.0.0",
+        "authors": [
+          "Marcobus2005"
+        ],
+        "imgUrl": "https://virtualpinballspreadsheet.github.io/vps-db/img/5RybGX4Q_b2s_1701178771233.webp",
+        "features": [
+          "FullDMD"
+        ],
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/17222-the-lord-of-the-rings-stern-2003-animated-b2s-with-full-dmd/"
+          }
+        ],
+        "id": "uPLM3EutQM",
+        "createdAt": 1701178739543
+      },
+      {
+        "game": {
+          "id": "5RybGX4Q",
+          "name": "The Lord of the Rings"
+        },
+        "updatedAt": 1695029872341,
+        "version": "1.0.0",
+        "authors": [
+          "Gedankekojote97",
+          "Seraph74"
+        ],
+        "imgUrl": "https://virtualpinballspreadsheet.github.io/vps-db/img/5RybGX4Q_b2s_1695029899838.webp",
+        "features": [
+          "2Screens"
+        ],
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/8829-lord-of-the-rings-authentic-fantasy/"
+          }
+        ],
+        "id": "JTcbaCWTq5",
+        "createdAt": 1695029854088
+      },
+      {
+        "game": {
+          "id": "5RybGX4Q",
+          "name": "The Lord of the Rings"
+        },
+        "updatedAt": 1689604140678,
+        "version": "1.0.0",
+        "authors": [
+          "Balutito"
+        ],
+        "imgUrl": "https://virtualpinballspreadsheet.github.io/vps-db/img/5RybGX4Q_b2s_1689604182281.webp",
+        "features": [
+          "2Screens"
+        ],
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/8836-alternative-b2s-and-backglass-for-lord-of-the-rings-balutito-collection/"
+          }
+        ],
+        "id": "x0Mp1-mUWE",
+        "createdAt": 1689604127746
+      },
+      {
+        "game": {
+          "id": "5RybGX4Q",
+          "name": "The Lord of the Rings"
+        },
+        "updatedAt": 1674749372226,
+        "version": "1.0.0",
+        "authors": [
+          "Ryguy417",
+          "VPW"
+        ],
+        "imgUrl": "https://virtualpinballspreadsheet.github.io/vps-db/img/5RybGX4Q_b2s_1674749409634.webp",
+        "features": [
+          "FullDMD"
+        ],
+        "id": "oKIJBxNPPj",
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/12896-lord-of-the-rings-stern-2003-b2s-with-full-dmd/"
+          }
+        ],
+        "comment": "Valinor Edition",
+        "createdAt": 1674749361589
+      },
+      {
+        "game": {
+          "id": "5RybGX4Q",
+          "name": "The Lord of the Rings"
+        },
+        "updatedAt": 1710681376452,
+        "version": "1.0",
+        "authors": [
+          "VPW",
+          "AstroNasty",
+          "Sixtoe",
+          "HauntFreaks"
+        ],
+        "imgUrl": "https://virtualpinballspreadsheet.github.io/vps-db/img/2923c6ffc7d0efdcc5d3eec71721ffb3_b2s_1643040095127.webp",
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/8835-lord-of-the-rings-valinor-edition-stern-2003-vpw-backglass-db2s/"
+          }
+        ],
+        "id": "zGj-MhIC",
+        "comment": "Valinor Edition",
+        "createdAt": 1674518400000
+      },
+      {
+        "game": {
+          "id": "5RybGX4Q",
+          "name": "The Lord of the Rings"
+        },
+        "updatedAt": 1710681397400,
+        "version": "2.0",
+        "authors": [
+          "Wildman"
+        ],
+        "imgUrl": "https://virtualpinballspreadsheet.github.io/vps-db/img/2923c6ffc7d0efdcc5d3eec71721ffb3_b2s_1638093749073.webp",
+        "features": [
+          "2Screens"
+        ],
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/4822-the-lord-of-the-rings-stern-2003/"
+          }
+        ],
+        "id": "GqypoDm8",
+        "createdAt": 1670112000000
+      }
+    ],
+    "tableFiles": [
+      {
+        "game": {
+          "id": "5RybGX4Q",
+          "name": "The Lord of the Rings"
+        },
+        "tableFormat": "FP",
+        "updatedAt": 1774694341793,
+        "version": "1.4",
+        "authors": [
+          "RLR",
+          "Francisco666",
+          "Glxb",
+          "Plumb",
+          "SLAMT1LT"
+        ],
+        "imgUrl": "https://virtualpinballspreadsheet.github.io/vps-db/img/-l0unP7WuM_1774694115465.webp",
+        "features": [
+          "BAM",
+          "FizX"
+        ],
+        "urls": [
+          {
+            "url": "https://pinballnirvana.com/forums/resources/lord-of-the-rings-stern-2003.8673/"
+          }
+        ],
+        "id": "-l0unP7WuM",
+        "createdAt": 1774051200000
+      },
+      {
+        "edition": "Valinor Edition",
+        "game": {
+          "id": "5RybGX4Q",
+          "name": "The Lord of the Rings"
+        },
+        "tableFormat": "VPX",
+        "updatedAt": 1751910013317,
+        "version": "1.6",
+        "authors": [
+          "VPW"
+        ],
+        "imgUrl": "https://virtualpinballspreadsheet.github.io/vps-db/img/2923c6ffc7d0efdcc5d3eec71721ffb3_table_1642986574903.webp",
+        "features": [
+          "4k",
+          "SSF",
+          "VR",
+          "Hybrid",
+          "FastFlips",
+          "incl. B2S",
+          "incl. Art",
+          "FSS",
+          "nFozzy",
+          "Fleep"
+        ],
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/8828-lord-of-the-rings-valinor-edition-stern-2003-vpw/"
+          }
+        ],
+        "id": "ulolpyXq",
+        "comment": "",
+        "createdAt": 1733011200000
+      },
+      {
+        "game": {
+          "id": "5RybGX4Q",
+          "name": "The Lord of the Rings"
+        },
+        "tableFormat": "VPX",
+        "updatedAt": 1751910142837,
+        "version": "1.4.0",
+        "authors": [
+          "Hanibal",
+          "Coindropper"
+        ],
+        "imgUrl": "https://virtualpinballspreadsheet.github.io/vps-db/img/SjJND6m__1711929417772.webp",
+        "features": [
+          "MOD",
+          "4k"
+        ],
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/4626-lord-of-the-rings-hanibals-4k-edition/"
+          },
+          {
+            "url": "https://www.vpforums.org/index.php?app=downloads&showfile=12737"
+          }
+        ],
+        "id": "SjJND6m_",
+        "comment": "Hanibals 4K Edition - There's an older, yet higher numbered version (2.0) on VPForums.",
+        "createdAt": 1711843200000
+      },
+      {
+        "game": {
+          "id": "5RybGX4Q",
+          "name": "The Lord of the Rings"
+        },
+        "tableFormat": "VPX",
+        "updatedAt": 1691297152553,
+        "version": "2.0",
+        "authors": [
+          "Bigus1",
+          "JPSalas"
+        ],
+        "imgUrl": "https://virtualpinballspreadsheet.github.io/vps-db/img/2923c6ffc7d0efdcc5d3eec71721ffb3_table_1638093698515.webp",
+        "features": [
+          "MOD"
+        ],
+        "urls": [
+          {
+            "url": "https://www.vpforums.org/index.php?app=downloads&showfile=14796"
+          }
+        ],
+        "id": "HDH6VLf6",
+        "comment": "Bigus MOD",
+        "createdAt": 1691193600000
+      },
+      {
+        "game": {
+          "id": "5RybGX4Q",
+          "name": "The Lord of the Rings"
+        },
+        "tableFormat": "VPX",
+        "updatedAt": 1674059249400,
+        "version": "2.0",
+        "authors": [
+          "Siggi",
+          "Neofr45",
+          "JPSalas"
+        ],
+        "imgUrl": "https://virtualpinballspreadsheet.github.io/vps-db/img/2923c6ffc7d0efdcc5d3eec71721ffb3_table_1641687352794.webp",
+        "features": [
+          "MOD"
+        ],
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/8627-lord-of-the-rings-siggis-mod/"
+          }
+        ],
+        "id": "tPXeKZWV",
+        "comment": "Siggi's MOD",
+        "createdAt": 1673996400000
+      },
+      {
+        "game": {
+          "id": "5RybGX4Q",
+          "name": "The Lord of the Rings"
+        },
+        "tableFormat": "VPX",
+        "updatedAt": 1648716659253,
+        "version": "1.0.1",
+        "authors": [
+          "Senseless",
+          "Siggi",
+          "Neofr45",
+          "JPSalas"
+        ],
+        "imgUrl": "https://virtualpinballspreadsheet.github.io/vps-db/img/5RybGX4Q_table_1648716700030.webp",
+        "features": [
+          "VR",
+          "MOD"
+        ],
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/6465-vr-room-lord-of-the-rings-stern-2003/"
+          }
+        ],
+        "id": "xHHaayZKrG",
+        "comment": "VR Room",
+        "createdAt": 1621029600000
+      },
+      {
+        "game": {
+          "id": "5RybGX4Q",
+          "name": "The Lord of the Rings"
+        },
+        "tableFormat": "VPX",
+        "updatedAt": 1687578076460,
+        "version": "1.6-2.5",
+        "authors": [
+          "Arconovum",
+          "Coindropper"
+        ],
+        "imgUrl": "https://virtualpinballspreadsheet.github.io/vps-db/img/5RybGX4Q_table_1687578160824.webp",
+        "features": [
+          "FSS",
+          "MOD"
+        ],
+        "id": "Ecbzx5kT",
+        "comment": "FSS (Full Single Screen) MOD",
+        "createdAt": 1542063600000
+      },
+      {
+        "game": {
+          "id": "5RybGX4Q",
+          "name": "The Lord of the Rings"
+        },
+        "tableFormat": "VPX",
+        "updatedAt": 1716263503239,
+        "version": "1.91",
+        "authors": [
+          "Coindropper"
+        ],
+        "id": "Y_Zx1tKbms",
+        "comment": "Orphaned on monsterbashpincab.com",
+        "createdAt": 1519862400000
+      },
+      {
+        "game": {
+          "id": "5RybGX4Q",
+          "name": "The Lord of the Rings"
+        },
+        "tableFormat": "VPX",
+        "updatedAt": 1754117390353,
+        "version": "1.0.3",
+        "authors": [
+          "Neofr45",
+          "JPSalas"
+        ],
+        "imgUrl": "https://virtualpinballspreadsheet.github.io/vps-db/img/45m9hVLG_1754117389169.webp",
+        "features": [
+          "MOD"
+        ],
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/4812-lord-of-the-rings-stern-2003neo-led-mod-10/"
+          }
+        ],
+        "id": "45m9hVLG",
+        "comment": "Neo LED MOD",
+        "createdAt": 1497045600000
+      },
+      {
+        "game": {
+          "id": "5RybGX4Q",
+          "name": "The Lord of the Rings"
+        },
+        "tableFormat": "VPX",
+        "updatedAt": 1696593397816,
+        "version": "1.0",
+        "authors": [
+          "TheGhost787",
+          "JPSalas"
+        ],
+        "imgUrl": "https://virtualpinballspreadsheet.github.io/vps-db/img/5RybGX4Q_table_1696593433452.webp",
+        "features": [
+          "MOD"
+        ],
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/4282-ghost-mod-lord-of-the-rings/"
+          }
+        ],
+        "id": "iii4q4WpsG",
+        "comment": "Ghost MOD",
+        "createdAt": 1475754919879
+      }
+    ],
+    "lastCreatedAt": 1774051200000,
+    "broken": false,
+    "mediaPackFiles": [
+      {
+        "createdAt": 1736121600000,
+        "updatedAt": 1737455562108,
+        "game": {
+          "name": "The Lord of the Rings",
+          "id": "5RybGX4Q"
+        },
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/5052-the-lord-of-the-rings-stern-2003-media-pack/"
+          }
+        ],
+        "authors": [
+          "CarnyPriest"
+        ],
+        "version": "1.21",
+        "id": "5d82Fly9Ie"
+      }
+    ]
+  },
+  {
+    "topperFiles": [
+      {
+        "game": {
+          "id": "Lgi1JLk0Vf",
+          "name": "Pink Floyd"
+        },
+        "createdAt": 1656190645975,
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/10351-pink-floyd-topper-and-backglass-video/"
+          }
+        ],
+        "id": "trkNh8wC65",
+        "authors": [
+          "Guet35"
+        ],
+        "version": "1.0",
+        "updatedAt": 1656190652425
+      }
+    ],
+    "manufacturer": "Original",
+    "broken": false,
+    "lastCreatedAt": 1666310400000,
+    "imgUrl": "https://virtualpinballspreadsheet.github.io/vps-db/img/Lgi1JLk0Vf_b2s_1691352984087.webp",
+    "designers": [],
+    "theme": [
+      "Music"
+    ],
+    "year": 2022,
+    "type": "SS",
+    "name": "Pink Floyd",
+    "id": "Lgi1JLk0Vf",
+    "tableFiles": [
+      {
+        "game": {
+          "id": "Lgi1JLk0Vf",
+          "name": "Pink Floyd"
+        },
+        "imgUrl": "https://virtualpinballspreadsheet.github.io/vps-db/img/Lgi1JLk0Vf_table_1691606449769.webp",
+        "features": [
+          "MOD"
+        ],
+        "comment": "BAM reskin of Earthshaker (Williams 1989)",
+        "id": "XyGYmMUmfR",
+        "urls": [
+          {
+            "url": "https://pinballnirvana.com/forums/resources/pink-floyd-original-bam-mod.8009/"
+          }
+        ],
+        "authors": [
+          "NitroNimbus",
+          "Francisco666",
+          "SLAMT1LT"
+        ],
+        "createdAt": 1666310400000,
+        "updatedAt": 1691606414153,
+        "version": "2.6",
+        "tableFormat": "FP"
+      },
+      {
+        "version": "1.0.0",
+        "features": [
+          "MOD",
+          "incl. PuP",
+          "incl. B2S"
+        ],
+        "imgUrl": "https://virtualpinballspreadsheet.github.io/vps-db/img/undefined_table_1653429830178.webp",
+        "game": {
+          "id": "Lgi1JLk0Vf",
+          "name": "Pink Floyd"
+        },
+        "tableFormat": "VPX",
+        "id": "qV3Z3oQ8md",
+        "updatedAt": 1653429714904,
+        "createdAt": 1653516000000,
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/10341-pink-floyd-vpx-cw-pup-pack/"
+          }
+        ],
+        "authors": [
+          "NitroNimbus",
+          "32assassin"
+        ],
+        "comment": "Reskin of 32assassin's Earthshaker (Williams 1989)"
+      }
+    ],
+    "b2sFiles": [
+      {
+        "createdAt": 1743120000000,
+        "game": {
+          "id": "Lgi1JLk0Vf",
+          "name": "Pink Floyd"
+        },
+        "comment": "Designed for the awesome PINK FLOYD - NO PUP PACK table by NitroNimbus & 32assassin!",
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/24657-pink-floyd-back-catalogue-backglass/"
+          }
+        ],
+        "version": "1.0",
+        "id": "WlwK5P4-tj",
+        "updatedAt": 1781506216861,
+        "authors": [
+          "CoffeeJoe"
+        ],
+        "features": [],
+        "imgUrl": "https://virtualpinballspreadsheet.github.io/vps-db/img/WlwK5P4-tj_1781506215338.webp"
+      },
+      {
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/10702-pink-floyd-v200/"
+          }
+        ],
+        "features": [
+          "2Screens"
+        ],
+        "authors": [
+          "Larouillas"
+        ],
+        "id": "If9_TPOATb",
+        "createdAt": 1696256341933,
+        "updatedAt": 1696256356914,
+        "version": "2.0.0",
+        "imgUrl": "https://virtualpinballspreadsheet.github.io/vps-db/img/Lgi1JLk0Vf_b2s_1696256383815.webp",
+        "game": {
+          "id": "Lgi1JLk0Vf",
+          "name": "Pink Floyd"
+        }
+      }
+    ],
+    "updatedAt": 1691606414153,
+    "romFiles": [
+      {
+        "id": "jgo91P3SSp",
+        "version": "esha_la3",
+        "createdAt": 1653429743969,
+        "game": {
+          "id": "Lgi1JLk0Vf",
+          "name": "Pink Floyd"
+        },
+        "urls": [
+          {
+            "url": "https://www.vpforums.org/index.php?app=downloads&showfile=919"
+          }
+        ],
+        "authors": [
+          "Destruk"
+        ],
+        "updatedAt": 1653429747668
+      }
+    ],
+    "wheelArtFiles": [
+      {
+        "id": "KgiB-oFoXI",
+        "version": "1.0.0",
+        "createdAt": 1760280368000,
+        "updatedAt": 1760280368000,
+        "authors": [
+          "Animusan"
+        ],
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/26960-pink-floyd-wheel/"
+          }
+        ],
+        "comment": null,
+        "game": {
+          "id": "Lgi1JLk0Vf",
+          "name": "Pink Floyd"
+        }
+      }
+    ]
+  },
+  {
+    "povFiles": [
+      {
+        "id": "cABYO89dGf",
+        "version": "1.0.0",
+        "createdAt": 1776107973000,
+        "updatedAt": 1778077796725,
+        "authors": [
+          "emanoel299"
+        ],
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/29815-tales-from-the-crypt-data-east-1993-mod-patch/"
+          }
+        ],
+        "game": {
+          "id": "fXaQ33KC",
+          "name": "Tales from the Crypt"
+        },
+        "comment": "10.8 Cabinet 3D POV for MOD patch"
+      },
+      {
+        "version": "1.0.0",
+        "authors": [
+          "LoadedWeapon"
+        ],
+        "game": {
+          "id": "fXaQ33KC",
+          "name": "Tales from the Crypt"
+        },
+        "createdAt": 1731715200000,
+        "id": "C_E6wwgQwG",
+        "comment": "10.8 Cabinet POV",
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/22244-tales-from-the-crypt-cabinet-pov/"
+          }
+        ],
+        "updatedAt": 1778077746431
+      },
+      {
+        "game": {
+          "id": "fXaQ33KC",
+          "name": "Tales from the Crypt"
+        },
+        "authors": [
+          "RajoJoey"
+        ],
+        "id": "ZLiiYw4-",
+        "updatedAt": 1563141600000,
+        "urls": [
+          {
+            "url": "https://bit.ly/POVs_RaJo"
+          }
+        ],
+        "version": "1.0"
+      }
+    ],
+    "manufacturer": "Data East",
+    "id": "fXaQ33KC",
+    "theme": [
+      "Licensed Theme",
+      "Comics",
+      "Horror"
+    ],
+    "pupPackFiles": [
+      {
+        "id": "npaTMr83",
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/7294-tales-from-the-crypt-puppack/"
+          }
+        ],
+        "authors": [
+          "MydknyteStyrm",
+          "Hawkeyez88",
+          "Andrew Walsh (Awalsh053)"
+        ],
+        "createdAt": 1628899200000,
+        "updatedAt": 1709124967985,
+        "game": {
+          "id": "fXaQ33KC",
+          "name": "Tales from the Crypt"
+        },
+        "version": "1.0.2"
+      }
+    ],
+    "altSoundFiles": [
+      {
+        "game": {
+          "id": "fXaQ33KC",
+          "name": "Tales from the Crypt"
+        },
+        "version": "1.0.0",
+        "createdAt": 1728950400000,
+        "id": "z_U1GKNuSy",
+        "updatedAt": 1745582829849,
+        "authors": [
+          "Chrispring"
+        ],
+        "comment": "Gsound",
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/21950-tales-from-the-crypt-data-east-1993-altsound-20-g-sound/"
+          }
+        ]
+      },
+      {
+        "game": {
+          "id": "fXaQ33KC",
+          "name": "Tales from the Crypt"
+        },
+        "authors": [
+          "Gerald",
+          "Julien42"
+        ],
+        "id": "sL-agBmh",
+        "updatedAt": 1446332400000,
+        "urls": [
+          {
+            "url": "https://pinsound-community.org/forum/index.php?/files/category/69-tales-from-the-crypt/"
+          }
+        ],
+        "version": "1.0"
+      }
+    ],
+    "tutorialFiles": [
+      {
+        "game": {
+          "id": "fXaQ33KC",
+          "name": "Tales from the Crypt"
+        },
+        "createdAt": 1755904242554,
+        "id": "Sp7Jj5OuBq",
+        "url": "https://pinballprimer.github.io/talesfromthecrypt_GR6wO.html",
+        "authors": [
+          "Pinball Primer"
+        ],
+        "updatedAt": 1755904242554,
+        "title": " Tales from the Crypt"
+      },
+      {
+        "game": {
+          "id": "fXaQ33KC",
+          "name": "Tales from the Crypt"
+        },
+        "youtubeId": "kDB0C658qyg",
+        "updatedAt": 1733861870819,
+        "title": "Tales from the Crypt (Data East 1993) - VPX Video Instruction",
+        "url": "https://vpuniverse.com/files/file/19879-tales-from-the-crypt-data-east-1993-vpx-video-instruction/",
+        "authors": [
+          "Kongedam",
+          "Odradek"
+        ],
+        "createdAt": 1715276246820,
+        "id": "70BO95izxn"
+      }
+    ],
+    "tableFiles": [
+      {
+        "id": "TJMo9ycfSP",
+        "createdAt": 1775606400000,
+        "updatedAt": 1778077788561,
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/29799-tales-from-the-crypt-data-east-1993-mod-patch/",
+            "broken": false
+          }
+        ],
+        "authors": [
+          "Jmcgohon81",
+          "VPW",
+          "Tomate",
+          "Iaakki",
+          "Sixtoe",
+          "DJRobX",
+          "Skitso",
+          "G5k",
+          "Wylte",
+          "Benji",
+          "Cyberpez",
+          "Apophis",
+          "Kingdids",
+          "Baldgeek",
+          "Fluffhead35",
+          "HauntFreaks",
+          "RiK",
+          "GTXJoe",
+          "Rawd",
+          "Leojreimroc"
+        ],
+        "features": [
+          "VPU Patch"
+        ],
+        "tableFormat": "VPX",
+        "version": "2.0",
+        "edition": "",
+        "comment": "Requires the original VPW table and VPU Patching System",
+        "imgUrl": "https://virtualpinballspreadsheet.github.io/vps-db/img/TJMo9ycfSP_1776111850639.webp",
+        "game": {
+          "id": "fXaQ33KC",
+          "name": "Tales from the Crypt"
+        },
+        "parentId": "uVgZUZdK"
+      },
+      {
+        "version": "3.0",
+        "createdAt": 1759622400000,
+        "comment": "Bigus MOD",
+        "tableFormat": "VPX",
+        "imgUrl": "https://virtualpinballspreadsheet.github.io/vps-db/img/xkDq6Aub_1759832715204.webp",
+        "urls": [
+          {
+            "url": "https://www.vpforums.org/index.php?app=downloads&showfile=14335"
+          }
+        ],
+        "game": {
+          "id": "fXaQ33KC",
+          "name": "Tales from the Crypt"
+        },
+        "id": "xkDq6Aub",
+        "features": [
+          "MOD",
+          "SSF"
+        ],
+        "authors": [
+          "Bigus1",
+          "32assassin",
+          "Freneticamnesic",
+          "Francisco666"
+        ],
+        "updatedAt": 1759832716732,
+        "parentId": "bCFO1HQ3"
+      },
+      {
+        "authors": [
+          "Morttis",
+          "Arconovum",
+          "32assassin",
+          "Freneticamnesic",
+          "Francisco666"
+        ],
+        "imgUrl": "https://virtualpinballspreadsheet.github.io/vps-db/img/fXaQ33KC_table_1687449631970.webp",
+        "urls": [
+          {
+            "url": "https://fss-pinball.com/"
+          }
+        ],
+        "id": "94lYrL29",
+        "tableFormat": "VPX",
+        "updatedAt": 1776334936294,
+        "createdAt": 1701129600000,
+        "version": "1.21-2.6",
+        "game": {
+          "id": "fXaQ33KC",
+          "name": "Tales from the Crypt"
+        },
+        "features": [
+          "MOD",
+          "FSS",
+          "nFozzy"
+        ],
+        "comment": "FSS (Full Single Screen) MOD",
+        "parentId": "bCFO1HQ3"
+      },
+      {
+        "version": "1.22",
+        "id": "uVgZUZdK",
+        "updatedAt": 1774434327813,
+        "comment": "",
+        "game": {
+          "id": "fXaQ33KC",
+          "name": "Tales from the Crypt"
+        },
+        "authors": [
+          "VPW",
+          "Tomate",
+          "Iaakki",
+          "Sixtoe",
+          "DJRobX",
+          "Skitso",
+          "G5k",
+          "Wylte",
+          "Benji",
+          "Cyberpez",
+          "Apophis",
+          "Kingdids",
+          "Baldgeek",
+          "Fluffhead35",
+          "HauntFreaks",
+          "RiK",
+          "GTXJoe",
+          "Rawd",
+          "Leojreimroc"
+        ],
+        "features": [
+          "Hybrid",
+          "VR",
+          "FSS",
+          "nFozzy",
+          "Fleep",
+          "LUT",
+          "SSF",
+          "DOF"
+        ],
+        "tableFormat": "VPX",
+        "imgUrl": "https://virtualpinballspreadsheet.github.io/vps-db/img/33282872e0aa665bdb75c6514a55b124_table_1638305603043.webp",
+        "createdAt": 1652659200000,
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/6933-tales-from-the-crypt-vpw-premium-for-vpx-106-data-east-1993/"
+          }
+        ]
+      },
+      {
+        "game": {
+          "id": "fXaQ33KC",
+          "name": "Tales from the Crypt"
+        },
+        "updatedAt": 1776334809422,
+        "comment": "Starlion MOD",
+        "edition": "",
+        "tableFormat": "VPX",
+        "createdAt": 1625961600000,
+        "version": "1.1",
+        "id": "UGNMK8KP4x",
+        "authors": [
+          "Starlion",
+          "Freneticamnesic",
+          "Francisco666"
+        ],
+        "imgUrl": "https://virtualpinballspreadsheet.github.io/vps-db/img/UGNMK8KP4x_1716851784397.webp",
+        "urls": [],
+        "features": [
+          "MOD"
+        ],
+        "parentId": "9zTrafQ4"
+      },
+      {
+        "authors": [
+          "Paulhenri62",
+          "32assassin",
+          "Freneticamnesic",
+          "Francisco666"
+        ],
+        "comment": "Graphical MOD",
+        "tableFormat": "VPX",
+        "id": "bSRET74YgV",
+        "version": "1.0",
+        "updatedAt": 1749303493600,
+        "game": {
+          "id": "fXaQ33KC",
+          "name": "Tales from the Crypt"
+        },
+        "createdAt": 1621987200000,
+        "features": [
+          "MOD",
+          "SSF",
+          "incl. Art",
+          "incl. Video"
+        ],
+        "urls": [
+          {
+            "url": "https://www.vpforums.org/index.php?app=downloads&showfile=15778"
+          }
+        ],
+        "imgUrl": "https://virtualpinballspreadsheet.github.io/vps-db/img/bSRET74YgV_1749303279429.webp",
+        "parentId": "bCFO1HQ3"
+      },
+      {
+        "updatedAt": 1708355265882,
+        "createdAt": 1617408000000,
+        "comment": "VR Room - Minimal",
+        "features": [
+          "VR",
+          "MOD"
+        ],
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/6031-tales-from-the-crypt-minimal-vr-room-data-east-1993/"
+          }
+        ],
+        "imgUrl": "https://virtualpinballspreadsheet.github.io/vps-db/img/Dd_EJ2BZE5_1708355264514.webp",
+        "version": "1.0.0",
+        "game": {
+          "id": "fXaQ33KC",
+          "name": "Tales from the Crypt"
+        },
+        "tableFormat": "VPX",
+        "authors": [
+          "Sixtoe",
+          "32assassin",
+          "Freneticamnesic",
+          "Francisco666"
+        ],
+        "id": "Dd_EJ2BZE5",
+        "parentId": "bCFO1HQ3"
+      },
+      {
+        "tableFormat": "VPX",
+        "version": "0.9",
+        "game": {
+          "id": "fXaQ33KC",
+          "name": "Tales from the Crypt"
+        },
+        "authors": [
+          "32assassin",
+          "Freneticamnesic",
+          "Francisco666"
+        ],
+        "createdAt": 1542067200000,
+        "comment": "Orphaned on vpinball.com",
+        "features": [
+          "SSF",
+          "MOD"
+        ],
+        "imgUrl": "https://virtualpinballspreadsheet.github.io/vps-db/img/fXaQ33KC_table_1687449691299.webp",
+        "updatedAt": 1716351871639,
+        "id": "bCFO1HQ3",
+        "urls": []
+      },
+      {
+        "id": "lXhrNU53py",
+        "createdAt": 1477872000000,
+        "game": {
+          "id": "fXaQ33KC",
+          "name": "Tales from the Crypt"
+        },
+        "updatedAt": 1776334472332,
+        "features": [
+          "MOD",
+          "no ROM"
+        ],
+        "tableFormat": "VPX",
+        "version": "1.0",
+        "edition": "",
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/4252-ghost-mod-tales-from-the-crypt/"
+          }
+        ],
+        "authors": [
+          "TheGhost787",
+          "Freneticamnesic",
+          "Francisco666"
+        ],
+        "imgUrl": "https://virtualpinballspreadsheet.github.io/vps-db/img/lXhrNU53py_1720564093980.webp",
+        "comment": "GhostMod",
+        "parentId": "9zTrafQ4"
+      },
+      {
+        "authors": [
+          "Freneticamnesic",
+          "Francisco666"
+        ],
+        "version": "072515a",
+        "tableFormat": "VPX",
+        "id": "9zTrafQ4",
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/3580-tales-from-the-crypt-conversion-from-fp-vpx-beta/"
+          }
+        ],
+        "game": {
+          "id": "fXaQ33KC",
+          "name": "Tales from the Crypt"
+        },
+        "createdAt": 1438466400000,
+        "updatedAt": 1749303224353,
+        "features": []
+      }
+    ],
+    "name": "Tales from the Crypt",
+    "ruleFiles": [
+      {
+        "id": "ZSVH1f47qF",
+        "version": "1.0.1",
+        "createdAt": 1789855647000,
+        "updatedAt": 1789855647000,
+        "authors": [
+          "kilazz"
+        ],
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/32048-tales-from-the-crypt-data-east-1993-instruction-card-rules/"
+          }
+        ],
+        "game": {
+          "id": "fXaQ33KC",
+          "name": "Tales from the Crypt"
+        }
+      },
+      {
+        "authors": [
+          "Nevvyboy"
+        ],
+        "id": "dVlr5eeSpW",
+        "createdAt": 1708905600000,
+        "updatedAt": 1709124870864,
+        "version": "1.0.0",
+        "game": {
+          "id": "fXaQ33KC",
+          "name": "Tales from the Crypt"
+        },
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/18736-tales-from-the-crypt-data-east-1993-vpx-instructions/"
+          }
+        ]
+      }
+    ],
+    "lastCreatedAt": 1775606400000,
+    "wheelArtFiles": [
+      {
+        "updatedAt": 1709125097207,
+        "createdAt": 1638306175059,
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/6923-tales-from-the-crypt-alt-animated/"
+          }
+        ],
+        "game": {
+          "id": "fXaQ33KC",
+          "name": "Tales from the Crypt"
+        },
+        "id": "vuRakkiR",
+        "authors": [
+          "Pritch33"
+        ],
+        "comment": "Animated",
+        "version": "1.0.0"
+      },
+      {
+        "game": {
+          "id": "fXaQ33KC",
+          "name": "Tales from the Crypt"
+        },
+        "id": "ZliOPW2o",
+        "comment": "Animated",
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/6938-tales-from-the-crypt-data-east-1993-ani-wheel/"
+          }
+        ],
+        "version": "1.0.0",
+        "authors": [
+          "HauntFreaks"
+        ],
+        "updatedAt": 1709125106218,
+        "createdAt": 1625788800000
+      },
+      {
+        "id": "vJCcgEWp",
+        "game": {
+          "id": "fXaQ33KC",
+          "name": "Tales from the Crypt"
+        },
+        "authors": [
+          "Mitshiba"
+        ],
+        "createdAt": 1625443200000,
+        "version": "1.0.0",
+        "updatedAt": 1709125080506,
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/6791-tales-from-the-crypt-wheel/"
+          }
+        ],
+        "comment": "Animated"
+      },
+      {
+        "game": {
+          "id": "fXaQ33KC",
+          "name": "Tales from the Crypt"
+        },
+        "updatedAt": 1498773600000,
+        "authors": [
+          "HauntFreaks"
+        ],
+        "urls": [
+          {
+            "url": "https://www.vpforums.org/index.php?app=downloads&showfile=12935"
+          }
+        ],
+        "version": "1.0",
+        "id": "WUjtK8Lu",
+        "createdAt": 1498780800000
+      }
+    ],
+    "year": 1993,
+    "romFiles": [
+      {
+        "updatedAt": 1708965493042,
+        "version": "tftc_400",
+        "game": {
+          "id": "fXaQ33KC",
+          "name": "Tales from the Crypt"
+        },
+        "comment": "Unofficial mod",
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/3941-tales-from-the-crypt-400-unofficial-mod/"
+          }
+        ],
+        "authors": [
+          "CarnyPriest"
+        ],
+        "createdAt": 1453420800000,
+        "id": "s-4c6GqaOn"
+      },
+      {
+        "game": {
+          "id": "fXaQ33KC",
+          "name": "Tales from the Crypt"
+        },
+        "updatedAt": 1444168800000,
+        "urls": [
+          {
+            "url": "https://www.vpforums.org/index.php?app=downloads&showfile=11340"
+          }
+        ],
+        "version": "tftc_400",
+        "authors": [
+          "Noah Fentz"
+        ],
+        "id": "2Q1pXHma",
+        "createdAt": 1444176000000
+      },
+      {
+        "createdAt": 1359331200000,
+        "urls": [
+          {
+            "url": "https://www.vpforums.org/index.php?app=downloads&showfile=263"
+          }
+        ],
+        "version": "tftc_303",
+        "game": {
+          "id": "fXaQ33KC",
+          "name": "Tales from the Crypt"
+        },
+        "id": "WshhKlRf",
+        "updatedAt": 1382914800000,
+        "authors": [
+          "Destruk"
+        ]
+      },
+      {
+        "createdAt": 1355529600000,
+        "updatedAt": 1708965407340,
+        "version": "tftc_303",
+        "authors": [
+          "VPUStaff"
+        ],
+        "id": "RgUM15UrTa",
+        "game": {
+          "id": "fXaQ33KC",
+          "name": "Tales from the Crypt"
+        },
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/1110-tftc_303zip/"
+          }
+        ]
+      }
+    ],
+    "designers": [
+      "John Borg"
+    ],
+    "altColorFiles": [
+      {
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/5764-tales-from-the-crypt-data-east-1993/"
+          }
+        ],
+        "folder": "tftc_303 or tftc_400",
+        "game": {
+          "id": "fXaQ33KC",
+          "name": "Tales from the Crypt"
+        },
+        "updatedAt": 1711096855318,
+        "type": "Pin2DMD",
+        "version": "1.1.0",
+        "authors": [
+          "MydknyteStyrm",
+          "WOB",
+          "Malenko",
+          "Lucky1"
+        ],
+        "createdAt": 1630886400000,
+        "id": "1IkglzKX",
+        "comment": "Rename files to pin2dmd.*",
+        "fileName": "TFTC_ColorDMD_1.1.pal"
+      }
+    ],
+    "updatedAt": 1778077788561,
+    "type": "SS",
+    "MPU": "DataEast/Sega Version 3",
+    "topperFiles": [
+      {
+        "id": "xuyN7iF6Bu",
+        "version": "1.0.0",
+        "createdAt": 1766413510000,
+        "updatedAt": 1766413510000,
+        "authors": [
+          "guet35"
+        ],
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/27934-tales-from-the-crypt-data-east-1993/"
+          }
+        ],
+        "game": {
+          "id": "fXaQ33KC",
+          "name": "Tales from the Crypt"
+        }
+      },
+      {
+        "version": "1.0",
+        "updatedAt": 1708440598569,
+        "id": "-fB0JACytY",
+        "createdAt": 1656363455641,
+        "authors": [
+          "HiRez00"
+        ],
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/8699-tales-from-the-crypt-data-east-1993-topperwheel-kit/"
+          }
+        ],
+        "game": {
+          "id": "fXaQ33KC",
+          "name": "Tales from the Crypt"
+        }
+      },
+      {
+        "game": {
+          "id": "fXaQ33KC",
+          "name": "Tales from the Crypt"
+        },
+        "version": "1.6.6",
+        "createdAt": 1547337600000,
+        "updatedAt": 1709125227168,
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/4749-topper-videos/"
+          }
+        ],
+        "authors": [
+          "Bambi Plattfuss"
+        ],
+        "id": "UuQjjnOq"
+      }
+    ],
+    "imgUrl": "https://virtualpinballspreadsheet.github.io/vps-db/img/fXaQ33KC_b2s_1696324199832.webp",
+    "b2sFiles": [
+      {
+        "id": "Pr7aybcEBQ",
+        "createdAt": 1759276800000,
+        "updatedAt": 1759403526887,
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/26863-tales-from-the-cryp-data-east-1993-alternative-b2s/",
+            "broken": false
+          }
+        ],
+        "authors": [
+          "Gudr"
+        ],
+        "features": [
+          "2Screens"
+        ],
+        "comment": "Alternative B2S",
+        "version": "1.0.0",
+        "imgUrl": "https://virtualpinballspreadsheet.github.io/vps-db/img/Pr7aybcEBQ_1759403507454.webp",
+        "game": {
+          "id": "fXaQ33KC",
+          "name": "Tales from the Crypt"
+        }
+      },
+      {
+        "id": "R5jT_3vYha",
+        "createdAt": 1758881283239,
+        "updatedAt": 1758881326635,
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/26834-tales-from-the-crypt-data-east-1993-alt3-full-dmd/",
+            "broken": false
+          }
+        ],
+        "authors": [
+          "HauntFreaks"
+        ],
+        "features": [
+          "FullDMD"
+        ],
+        "version": "1.0.0",
+        "comment": "Alt #3",
+        "imgUrl": "https://virtualpinballspreadsheet.github.io/vps-db/img/R5jT_3vYha_1758881325159.webp",
+        "game": {
+          "id": "fXaQ33KC",
+          "name": "Tales from the Crypt"
+        }
+      },
+      {
+        "features": [
+          "FullDMD"
+        ],
+        "imgUrl": "https://virtualpinballspreadsheet.github.io/vps-db/img/fXaQ33KC_b2s_1680210246991.webp",
+        "id": "h2NfHxtJpX",
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/13424-tales-from-the-crypt-data-east-1993-alt-2-b2s-with-full-dmd/"
+          }
+        ],
+        "authors": [
+          "HauntFreaks"
+        ],
+        "updatedAt": 1710176655814,
+        "version": "1.0.0",
+        "game": {
+          "id": "fXaQ33KC",
+          "name": "Tales from the Crypt"
+        },
+        "createdAt": 1677801600000
+      },
+      {
+        "features": [
+          "2Screens",
+          "FullDMD"
+        ],
+        "createdAt": 1670889600000,
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/11194-tales-from-the-crypt-data-east-1993-b2s-with-full-dmd/"
+          }
+        ],
+        "authors": [
+          "HauntFreaks"
+        ],
+        "game": {
+          "id": "fXaQ33KC",
+          "name": "Tales from the Crypt"
+        },
+        "updatedAt": 1710176645168,
+        "version": "3.0",
+        "id": "gNuw8VtwyD",
+        "imgUrl": "https://virtualpinballspreadsheet.github.io/vps-db/img/fXaQ33KC_b2s_1660932610563.webp"
+      },
+      {
+        "features": [
+          "2Screens"
+        ],
+        "createdAt": 1652745600000,
+        "id": "KOER7-FwL0",
+        "version": "2.0.0",
+        "authors": [
+          "HauntFreaks"
+        ],
+        "updatedAt": 1710176641298,
+        "game": {
+          "id": "fXaQ33KC",
+          "name": "Tales from the Crypt"
+        },
+        "comment": "",
+        "imgUrl": "https://virtualpinballspreadsheet.github.io/vps-db/img/fXaQ33KC_b2s_1696324199832.webp",
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/10288-tales-from-the-crypt-data-east-1993-b2s-new/"
+          }
+        ]
+      },
+      {
+        "version": "1.0.0",
+        "features": [
+          "2Screens",
+          "3Screens"
+        ],
+        "imgUrl": "https://virtualpinballspreadsheet.github.io/vps-db/img/33282872e0aa665bdb75c6514a55b124_b2s_1638358805960.webp",
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/7075-tales-from-the-crypt-data-east-1993-2-3-screens-directb2s-b2s-db2s/"
+          }
+        ],
+        "createdAt": 1626566400000,
+        "id": "46OEMUsg",
+        "updatedAt": 1710176602558,
+        "authors": [
+          "Blacksad"
+        ],
+        "game": {
+          "id": "fXaQ33KC",
+          "name": "Tales from the Crypt"
+        }
+      },
+      {
+        "createdAt": 1625788800000,
+        "authors": [
+          "Wildman"
+        ],
+        "updatedAt": 1710176533445,
+        "game": {
+          "id": "fXaQ33KC",
+          "name": "Tales from the Crypt"
+        },
+        "version": "2.0",
+        "imgUrl": "https://virtualpinballspreadsheet.github.io/vps-db/img/33282872e0aa665bdb75c6514a55b124_b2s_1638093719876.webp",
+        "id": "zuv34GaI",
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/2686-tales-from-the-crypt-data-east-1993/"
+          }
+        ],
+        "features": []
+      },
+      {
+        "createdAt": 1624492800000,
+        "imgUrl": "https://virtualpinballspreadsheet.github.io/vps-db/img/33282872e0aa665bdb75c6514a55b124_b2s_1638305751955.webp",
+        "game": {
+          "id": "fXaQ33KC",
+          "name": "Tales from the Crypt"
+        },
+        "updatedAt": 1710176553550,
+        "id": "J_R_gS79",
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/6682-tales-from-the-crypt-data-east-1993-b2s/"
+          }
+        ],
+        "version": "1.2",
+        "authors": [
+          "HauntFreaks"
+        ],
+        "features": []
+      },
+      {
+        "imgUrl": "https://virtualpinballspreadsheet.github.io/vps-db/img/33282872e0aa665bdb75c6514a55b124_b2s_1638358805958.webp",
+        "game": {
+          "id": "fXaQ33KC",
+          "name": "Tales from the Crypt"
+        },
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/6683-tales-from-the-crypt-data-east-1993-alt-b2s/"
+          }
+        ],
+        "id": "sByIe7cr",
+        "authors": [
+          "HauntFreaks"
+        ],
+        "updatedAt": 1710176575637,
+        "createdAt": 1623801600000,
+        "version": "1.0.0",
+        "features": []
+      }
+    ],
+    "broken": false,
+    "ipdbUrl": "http://www.ipdb.org/machine.cgi?id=2493",
+    "players": 4
+  },
+  {
+    "broken": false,
+    "theme": [
+      "Licensed Theme",
+      "Music"
+    ],
+    "altColorFiles": [
+      {
+        "updatedAt": 1768392033016,
+        "authors": [
+          "PastorLUL"
+        ],
+        "id": "WmF0x5DiQL",
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/17697-acdc-64-colors/"
+          }
+        ],
+        "version": "1.01",
+        "game": {
+          "id": "pJJOvLweWw",
+          "name": "AC/DC (Pro Vault Edition)"
+        },
+        "type": "Serum 2.0",
+        "createdAt": 1768435200000,
+        "fileName": "acd_170h.cROMc",
+        "folder": "acd_170h",
+        "comment": "New cROMc format. DMDext 2.4.0 and latest VPinMame required."
+      },
+      {
+        "comment": "Permium 1.70",
+        "updatedAt": 1707403597709,
+        "authors": [
+          "Ninuzzu",
+          "PinballMike"
+        ],
+        "id": "qdOzjXjSmU",
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/5179-acdc-pro-170/"
+          }
+        ],
+        "version": "1.0.0",
+        "game": {
+          "id": "pJJOvLweWw",
+          "name": "AC/DC (Pro Vault Edition)"
+        },
+        "type": "PB Patch",
+        "createdAt": 1531872000000
+      }
+    ],
+    "designers": [
+      "Steve Ritchie"
+    ],
+    "lastCreatedAt": 1783770179000,
+    "manufacturer": "Stern",
+    "players": 4,
+    "name": "AC/DC (Pro Vault Edition)",
+    "b2sFiles": [
+      {
+        "imgUrl": "https://virtualpinballspreadsheet.github.io/vps-db/img/rRGogFTj8X_b2s_1689846799002.webp",
+        "features": [
+          "2Screens"
+        ],
+        "updatedAt": 1707391634652,
+        "authors": [
+          "Wildman"
+        ],
+        "id": "ilcSqv68JY",
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/3131-acdc-pro-stern-2012/"
+          }
+        ],
+        "version": "1.0",
+        "game": {
+          "id": "pJJOvLweWw",
+          "name": "AC/DC (Pro Vault Edition)"
+        },
+        "createdAt": 1418515200000
+      }
+    ],
+    "id": "pJJOvLweWw",
+    "romFiles": [
+      {
+        "updatedAt": 1686977572207,
+        "authors": [
+          "Stern"
+        ],
+        "id": "eN_mvdyFRC",
+        "urls": [
+          {
+            "url": "https://sternpinball.com/?post_type=game_code&s=dc"
+          }
+        ],
+        "version": "acd_170h",
+        "game": {
+          "id": "pJJOvLweWw",
+          "name": "AC/DC (Pro Vault Edition)"
+        },
+        "createdAt": 1515283200000
+      }
+    ],
+    "ipdbUrl": "https://www.ipdb.org/machine.cgi?id=6439",
+    "year": 2017,
+    "tableFiles": [
+      {
+        "id": "xk_hRDrZhp",
+        "version": "1.0.1",
+        "createdAt": 1783770179000,
+        "updatedAt": 1788145599040,
+        "authors": [
+          "MisterCoffee",
+          "Ninuzzu",
+          "Javier15",
+          "DJRobX",
+          "Dark",
+          "Zany",
+          "Tom Tower",
+          "Knorr",
+          "Rysr",
+          "PeterJ",
+          "requlem",
+          "rom"
+        ],
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/30957-ac-dc-stern-2012-lighting-bug-fix-for-ninuzzu%C2%B4s-tables/"
+          }
+        ],
+        "features": [
+          "VPU Patch",
+          "SSF",
+          "FastFlips"
+        ],
+        "tableFormat": "VPX",
+        "parentId": "zFOcOPpA2Y",
+        "comment": "Lighting Bug Fix for Ninuzzu´s tables",
+        "game": {
+          "id": "pJJOvLweWw",
+          "name": "AC/DC (Pro Vault Edition)"
+        }
+      },
+      {
+        "updatedAt": 1716356057626,
+        "game": {
+          "id": "pJJOvLweWw",
+          "name": "AC/DC (Pro Vault Edition)"
+        },
+        "createdAt": 1531810800000,
+        "authors": [
+          "Ninuzzu",
+          "Javier15",
+          "DJRobX",
+          "Dark",
+          "Zany",
+          "Tom Tower",
+          "Knorr",
+          "Rysr",
+          "PeterJ",
+          "requlem",
+          "rom"
+        ],
+        "version": "1.0",
+        "imgUrl": "https://virtualpinballspreadsheet.github.io/vps-db/img/pJJOvLweWw_table_1691357183888.webp",
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/5489-acdc/"
+          }
+        ],
+        "features": [
+          "SSF",
+          "FastFlips"
+        ],
+        "comment": "Pro, Pro Vault, Premium, Back In Black LE, Let There Be Rock LE, LUCI",
+        "id": "zFOcOPpA2Y",
+        "tableFormat": "VPX"
+      }
+    ],
+    "updatedAt": 1788145599040,
+    "povFiles": [
+      {
+        "updatedAt": 1686976884523,
+        "authors": [
+          "RajoJoey"
+        ],
+        "id": "3aB8k6q6Ci",
+        "urls": [
+          {
+            "url": "https://bit.ly/POVs_RaJo"
+          }
+        ],
+        "version": "1.0",
+        "game": {
+          "id": "pJJOvLweWw",
+          "name": "AC/DC (Pro Vault Edition)"
+        },
+        "createdAt": 1686976879163
+      }
+    ],
+    "mediaPackFiles": [
+      {
+        "updatedAt": 1737459125883,
+        "authors": [
+          "CarnyPriest"
+        ],
+        "id": "nwKqt1m7jv",
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/4950-acdc-stern-2012-media-pack/"
+          }
+        ],
+        "version": "1.3",
+        "game": {
+          "id": "pJJOvLweWw",
+          "name": "AC/DC (Pro Vault Edition)"
+        },
+        "createdAt": 1735689600000
+      }
+    ],
+    "type": "SS",
+    "wheelArtFiles": [
+      {
+        "updatedAt": 1689599350772,
+        "authors": [
+          "Dynamite"
+        ],
+        "id": "my9_Yzc07d",
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/9258-acdc-ninuzzu-tables-animated-wheel/"
+          }
+        ],
+        "version": "1.0.0",
+        "game": {
+          "id": "pJJOvLweWw",
+          "name": "AC/DC (Pro Vault Edition)"
+        },
+        "createdAt": 1689599341738
+      }
+    ],
+    "topperFiles": [
+      {
+        "id": "XmMyk-tH9-",
+        "version": "1.0.0",
+        "createdAt": 1789837595000,
+        "updatedAt": 1789837595000,
+        "authors": [
+          "AnTiBoDy"
+        ],
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/32119-acdc-stern-2012-topper-video/"
+          }
+        ],
+        "game": {
+          "id": "pJJOvLweWw",
+          "name": "AC/DC (Pro Vault Edition)"
+        }
+      }
+    ],
+    "ruleFiles": [
+      {
+        "id": "38GK1sCrTg",
+        "version": "1.0.0",
+        "createdAt": 1790027223000,
+        "updatedAt": 1790027223000,
+        "authors": [
+          "kilazz"
+        ],
+        "urls": [
+          {
+            "url": "https://vpuniverse.com/files/file/32072-ac-dc-stern-2012-instruction-card-rules-acdc/"
+          }
+        ],
+        "game": {
+          "id": "pJJOvLweWw",
+          "name": "AC/DC (Pro Vault Edition)"
+        }
+      }
+    ]
+  }
+]

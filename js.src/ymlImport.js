@@ -212,7 +212,11 @@
   }
 
   function allSupportedKeys() {
-    const keys = new Set(['tableVPSId', 'enabled', 'nsfw']);
+    // vpxArchiveFormat is DERIVED, not edited: prepareData mirrors it from
+    // specialDMDArchiveFormat when a DMD is bundled. It belongs to no field, so
+    // without seeding it here a bundled YML would import with it reported as an
+    // outdated key and stripped.
+    const keys = new Set(['tableVPSId', 'enabled', 'nsfw', 'vpxArchiveFormat']);
     WIZARD_STEPS.forEach(step => {
       (step.fields || []).forEach(field => {
         keys.add(field.yml_field);
@@ -269,6 +273,21 @@
       if (typeof value === 'string') values[key] = value.toUpperCase();
       else if (Array.isArray(value)) values[key] = value.map(item => String(item).toUpperCase());
     });
+
+    // vpxMagic is stored base64 in the YML and plain in the builder, and it
+    // carries either one password or a list of them. Decode every entry, then
+    // spread them back across the builder's slots. Without this a round-trip
+    // (import then download) would encode a second time - and the old
+    // `typeof === 'string'` guard would skip a list outright, importing the
+    // base64 as if it were the password.
+    if (values.vpxMagic !== undefined && values.vpxMagic !== null) {
+      const utils = window.VPS_UTILS || {};
+      const decode = utils.decodeVpxMagic || (entry => entry);
+      const raw = Array.isArray(values.vpxMagic) ? values.vpxMagic : [values.vpxMagic];
+      const plain = raw.map(entry => decode(entry));
+      if (utils.distributeVpxMagic) utils.distributeVpxMagic(plain, values);
+      else values.vpxMagic = plain[0] || '';
+    }
 
     // Preserve `enabled: false` from the imported YAML (checkbox will render
     // as checked). Anything else (missing, or `enabled: true`) is normalised
@@ -603,6 +622,47 @@
         await nextPaint();
       }
     }
+
+    // The DMD row's dropdown holds a TYPE, not a VPS ID, so the idField loop at
+    // the top skips it - and it only unlocks once Bundled or Override is
+    // ticked, which the two loops above have just done. It has to be set here,
+    // before loadImportedFields: the DMD tab stays disabled until a type is
+    // chosen, and loadImportedFields skips a disabled tab's fields entirely.
+    const dmdType = String(values.specialDMDType ?? '').trim();
+    if (dmdType) {
+      const dmdSelect = document.querySelector('#assetMatrix .asset-row[data-category="specialDMD"] select');
+      if (dmdSelect && !dmdSelect.disabled) {
+        dmdSelect.value = dmdType;
+        dmdSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        await nextPaint();
+      }
+    }
+  }
+
+  function fieldByKey(key) {
+    for (const step of WIZARD_STEPS) {
+      const field = (step.fields || []).find(candidate => candidate.yml_field === key);
+      if (field) return field;
+    }
+    return null;
+  }
+
+  // A control holds ONE string, so every imported list value is flattened the
+  // moment its input event fires - vpxChecksum's second entry was being lost
+  // exactly this way. These go straight back to state once the controls have
+  // had their turn, bypassing the DOM entirely.
+  function restoreListValues(values) {
+    const onChange = window.VPS_FEATURE_RUNTIME?.state?.callbacks?.onChange;
+    if (typeof onChange !== 'function') return;
+    Object.entries(values).forEach(([key, value]) => {
+      if (!Array.isArray(value) || value.length < 2) return;
+      const field = fieldByKey(key);
+      // `array` fields (testers, author overrides) round-trip correctly as a
+      // comma-separated string and must NOT be forced back into a list.
+      if (!field || field.type === 'array') return;
+      onChange(key, value, { yml_field: key, type: field.type || 'str' });
+    });
+    window.VPS_CHECKSUM_ADDITIONAL?.render?.();
   }
 
   function fieldValueForControl(field, value) {
@@ -718,6 +778,12 @@
       await loadTable(tableId);
       await selectImportedAssets(values);
       await loadImportedFields(values);
+      restoreListValues(values);
+      // vpxMagicAdditional is a customRenderer field with no DOM control,
+      // so loadImportedFields cannot reach it - the same reason
+      // additionalRoms needs its own bridge. Without this, every password
+      // past the third is silently lost on import.
+      window.VPS_MAGIC_PASSWORDS?.applyImported?.(values.vpxMagicAdditional);
 
       const ignoredMessage = ignored.length
         ? ` Loaded successfully; ${ignored.length} outdated field${ignored.length === 1 ? ' was' : 's were'} removed.`

@@ -1,0 +1,514 @@
+/* Help modal restructure (Instructions / Walkthrough / FAQ / Hotkeys) and the
+   guided tour overlay. Loaded last so it wins over earlier help styling.
+
+   The tour deliberately never runs while a <dialog> is open: an element shown
+   with showModal() paints in the browser's top layer, above all body content
+   regardless of z-index, so a body-level overlay could never cover it. The
+   launch button closes the help dialog first. See "VPXS UI Gotchas". */
+
+/* ---------- Help dialog header ---------- */
+
+/* The <h2> under this eyebrow was removed, so the eyebrow is now the dialog's
+   accessible name and its only heading. Scoped to #helpDialog on purpose: the
+   Validation, Recent, and Additional ROM dialogs keep the 10px shared size. */
+#helpDialog .dialog-header .eyebrow {
+  font-size: 12px;
+  margin-bottom: 0;
+}
+
+/* ---------- Help tabs and shared panel typography ---------- */
+
+.help-slim-tabs {
+  flex-wrap: wrap;
+}
+
+.help-lede {
+  margin: 0 0 14px;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+.help-tab-panel code {
+  padding: 1px 5px;
+  border: 1px solid var(--panel-line);
+  border-radius: 5px;
+  background: var(--panel-soft);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11px;
+}
+
+/* ---------- Instructions: grouped field families ---------- */
+
+.help-doc-list {
+  display: grid;
+  gap: 8px;
+}
+
+.help-doc-list details {
+  border: 1px solid var(--panel-line);
+  border-radius: var(--radius-sm);
+  background: var(--panel-soft);
+  overflow: hidden;
+}
+
+.help-doc-list details[open] {
+  border-color: var(--panel-line-strong);
+}
+
+.help-doc-list summary {
+  padding: 10px 12px;
+  cursor: pointer;
+  color: var(--text);
+  font-weight: 700;
+  font-size: 12.5px;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.help-doc-list summary::-webkit-details-marker {
+  display: none;
+}
+
+.help-doc-list summary::before {
+  content: "\203A";
+  display: inline-block;
+  color: var(--accent);
+  font-size: 15px;
+  line-height: 1;
+  transition: transform 140ms ease;
+}
+
+.help-doc-list details[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.help-doc-list summary:hover {
+  color: var(--accent);
+}
+
+.help-doc-body {
+  padding: 0 12px 12px 32px;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+.help-doc-body p {
+  margin: 0 0 10px;
+}
+
+.help-doc-body p:last-child,
+.help-doc-body ul:last-child {
+  margin-bottom: 0;
+}
+
+.help-doc-body ul {
+  margin: 0 0 10px;
+  padding-left: 18px;
+}
+
+.help-doc-body li {
+  margin-bottom: 6px;
+}
+
+.help-doc-body strong {
+  color: var(--text);
+}
+
+/* Wide content scrolls inside its own box rather than stretching the dialog. */
+.help-table-wrap {
+  margin: 0 0 10px;
+  overflow-x: auto;
+}
+
+.help-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11.5px;
+}
+
+.help-table th,
+.help-table td {
+  padding: 6px 9px;
+  border: 1px solid var(--panel-line);
+  text-align: left;
+  vertical-align: top;
+}
+
+.help-table th {
+  background: var(--panel-raised);
+  color: var(--text);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* ---------- Walkthrough tab ---------- */
+
+.tour-launch-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin: 0 0 12px;
+  padding: 13px 15px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  background: var(--accent-soft);
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  transition: background 140ms ease, transform 140ms ease;
+}
+
+.tour-launch-btn:hover {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.tour-launch-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.tour-launch-icon {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 11px;
+}
+
+.tour-launch-btn:hover .tour-launch-icon {
+  background: var(--accent-ink);
+  color: var(--accent);
+}
+
+.tour-launch-text {
+  display: grid;
+  gap: 2px;
+}
+
+.tour-launch-text strong {
+  font-size: 13px;
+}
+
+.tour-launch-text small {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.tour-launch-btn:hover .tour-launch-text small {
+  color: inherit;
+  opacity: 0.85;
+}
+
+/* Secondary launcher: same shape, quieter, since it is the one that loads a
+   table rather than just explaining things. */
+.tour-launch-secondary {
+  border-color: var(--panel-line-strong);
+  background: var(--panel-soft);
+}
+
+.tour-launch-secondary .tour-launch-icon {
+  background: var(--panel-raised);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+
+.tour-launch-secondary:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+.tour-launch-secondary:hover .tour-launch-icon {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.tour-launch-secondary:hover .tour-launch-text small {
+  color: var(--text-muted);
+  opacity: 1;
+}
+
+.tour-launch-btn[disabled] {
+  opacity: 0.55;
+  cursor: progress;
+}
+
+.help-tour-note,
+.help-hotkey-note {
+  margin: 0 0 12px;
+  color: var(--text-faint);
+  font-size: 11.5px;
+  line-height: 1.55;
+}
+
+.help-hotkey-note {
+  margin: 14px 0 0;
+}
+
+.help-tour-outline-label {
+  margin: 0 0 6px;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.help-tour-outline {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+/* ---------- Guided tour overlay ---------- */
+
+.tour-root {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  pointer-events: none;
+}
+
+.tour-root[hidden] {
+  display: none;
+}
+
+/* The dim is painted as one enormous spread shadow around the cutout, which
+   avoids needing an SVG mask or four separately positioned panels. */
+.tour-spotlight {
+  position: fixed;
+  border-radius: var(--radius-sm);
+  box-shadow: 0 0 0 9999px rgba(4, 6, 11, 0.72), 0 0 0 2px var(--accent);
+  pointer-events: none;
+  transition: top 220ms ease, left 220ms ease, width 220ms ease, height 220ms ease;
+}
+
+html[data-theme="light"] .tour-spotlight {
+  box-shadow: 0 0 0 9999px rgba(27, 31, 39, 0.55), 0 0 0 2px var(--accent);
+}
+
+/* Centered state: no real target to point at, so the dim covers everything. */
+.tour-spotlight.is-centered {
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  box-shadow: 0 0 0 9999px rgba(4, 6, 11, 0.82);
+}
+
+html[data-theme="light"] .tour-spotlight.is-centered {
+  box-shadow: 0 0 0 9999px rgba(27, 31, 39, 0.62);
+}
+
+.tour-tip {
+  position: fixed;
+  width: min(340px, calc(100vw - 32px));
+  padding: 15px 16px 13px;
+  border: 1px solid var(--panel-line-strong);
+  border-radius: var(--radius-md);
+  background: var(--panel);
+  box-shadow: var(--shadow-lift);
+  pointer-events: auto;
+  transition: top 220ms ease, left 220ms ease;
+}
+
+.tour-tip-step {
+  margin: 0 0 3px;
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.tour-tip-title {
+  margin: 0 0 7px;
+  font-family: "Chakra Petch", sans-serif;
+  font-size: 15px;
+  color: var(--text);
+}
+
+.tour-tip-body {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+.tour-tip-body p {
+  margin: 0 0 8px;
+}
+
+.tour-tip-body p:last-child {
+  margin-bottom: 0;
+}
+
+.tour-tip-body strong {
+  color: var(--text);
+}
+
+/* Shown instead of the body text when the step's control is not on screen. */
+.tour-tip-missing {
+  margin: 9px 0 0;
+  padding: 8px 10px;
+  border: 1px dashed var(--warning);
+  border-radius: var(--radius-sm);
+  background: var(--warning-soft);
+  color: var(--text);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+/* The "your turn" block on a locked step. Amber while the task is outstanding,
+   green the moment it is satisfied, just before the tour advances itself. */
+.tour-tip-task {
+  margin-top: 12px;
+  padding: 10px 11px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+}
+
+.tour-tip-task.is-done {
+  border-color: var(--success);
+  background: var(--success-soft);
+}
+
+.tour-task-label {
+  margin: 0 0 4px;
+  color: var(--accent);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.tour-tip-task.is-done .tour-task-label {
+  color: var(--success);
+}
+
+.tour-task-instruction {
+  margin: 0;
+  color: var(--text);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+/* The fallback route on a task instruction: its own line, emphasized, so it
+   reads as an alternative rather than part of the main ask. */
+.tour-task-aside {
+  display: block;
+  margin-top: 7px;
+}
+
+.tour-task-status {
+  margin: 6px 0 0;
+  color: var(--text-faint);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+.tour-task-status:empty {
+  display: none;
+}
+
+.tour-task-status.is-done {
+  color: var(--success);
+  font-weight: 700;
+}
+
+.tour-tip-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 13px;
+}
+
+.tour-tip-actions .tour-spacer {
+  flex: 1 1 auto;
+}
+
+.tour-btn {
+  padding: 7px 13px;
+  border: 1px solid var(--panel-line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--panel-raised);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.tour-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.tour-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.tour-btn[disabled] {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.tour-btn[disabled]:hover {
+  border-color: var(--panel-line-strong);
+  color: var(--text);
+}
+
+.tour-btn-primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 700;
+}
+
+.tour-btn-primary:hover {
+  background: var(--accent);
+  color: var(--accent-ink);
+  filter: brightness(1.08);
+}
+
+.tour-btn-skip {
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-faint);
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+.tour-btn-skip:hover {
+  border-color: transparent;
+  color: var(--danger);
+}
+
+@media (max-width: 720px) {
+  .tour-tip {
+    width: calc(100vw - 24px);
+  }
+
+  .help-doc-body {
+    padding-left: 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tour-spotlight,
+  .tour-tip {
+    transition: none;
+  }
+}
