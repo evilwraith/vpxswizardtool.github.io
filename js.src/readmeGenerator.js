@@ -425,6 +425,8 @@
         showToast('warning', `${label} downloaded`, `${filename} was downloaded. No preview image was available for the selected VPX or the table itself.`);
       }
     } catch (error) {
+      // Console output only; `label` is a fixed UI string, never user input.
+      // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring
       console.error(`Unable to generate ${label}`, error);
       showToast('error', `${label} failed`, error?.message || 'The README could not be generated.');
     } finally {

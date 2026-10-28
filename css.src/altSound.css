@@ -6,7 +6,7 @@
     "alt-id alt-checksum"
     "alt-notes alt-notes"
     "alt-root alt-format"
-    "alt-directory alt-directory";
+    "alt-directory .";
 }
 
 .field-alt-id { grid-area: alt-id; }

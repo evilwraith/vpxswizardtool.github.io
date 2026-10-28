@@ -14,12 +14,6 @@
   margin: 0 auto;
 }
 
-/* The Help title remains a single line so changing its text does not alter the modal footprint. */
-#helpDialog .dialog-header h2 {
-  min-height: 27px;
-  line-height: 27px;
-}
-
 @media (max-height: 560px) {
   :root {
     --app-dialog-start: max(12px, env(safe-area-inset-top));

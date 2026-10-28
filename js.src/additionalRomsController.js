@@ -7,7 +7,31 @@
 
   const { CATEGORY_CONFIG, WIZARD_STEPS } = fields;
   const { getCategoryItems, getItemLabel, isItemBroken, isMd5Hash } = utils;
+  const ARCHIVE_EXTENSIONS = ['.zip', '.rar', '.7z'];
   let editingIndex = -1;
+  // The dots stay quiet until a Save ROM fails. From then until the editor
+  // reopens, every edit re-checks the entry, so each dot clears as it is fixed.
+  let liveDots = false;
+
+  // This dialog renders its own checksum drop field, so it resolves the same
+  // manufacturer rules from the same field definition rather than keeping a
+  // second hard-coded extension list that would drift out of sync.
+  function checksumRules() {
+    const ui = window.VPS_UI || {};
+    const field = definition();
+    const values = runtime.state.values || {};
+    const allowed = typeof ui.getChecksumExtensions === 'function'
+      ? ui.getChecksumExtensions(field, values)
+      : ARCHIVE_EXTENSIONS.slice();
+    const scanExtension = typeof ui.getArchiveScanExtension === 'function'
+      ? ui.getArchiveScanExtension(field, values)
+      : '';
+    return { allowed: allowed.length ? allowed : ARCHIVE_EXTENSIONS.slice(), scanExtension };
+  }
+
+  function dropHintText() {
+    return `Drop ${checksumRules().allowed.join(' / ')} file to calculate MD5`;
+  }
 
   function definition() {
     return WIZARD_STEPS.find(step => step.id === 'rom')?.fields
@@ -81,7 +105,6 @@
   function clearFieldErrorPresentation(node) {
     node.querySelectorAll('.field.has-field-error').forEach(field => {
       field.classList.remove('has-field-error');
-      field.removeAttribute('data-error-count');
       field.querySelector(':scope > .field-error-dot')?.remove();
     });
   }
@@ -98,10 +121,11 @@
       const wrapper = node.querySelector(`#${FIELD_CONTROL_IDS[field]}`)?.closest('.field');
       if (!wrapper) return;
       wrapper.classList.add('has-field-error');
-      wrapper.dataset.errorCount = String(messages.length);
       const dot = document.createElement('span');
       dot.className = 'field-error-dot';
-      dot.dataset.tooltip = messages.join(' ');
+      // One problem per line, like the builder's dots.
+      dot.dataset.tooltip = messages.join('\n');
+      window.VPS_ERROR_DOTS?.setTip?.(dot, messages);
       dot.setAttribute('role', 'img');
       dot.setAttribute('aria-label', messages.join(' '));
       dot.tabIndex = 0;
@@ -197,15 +221,21 @@
       checksumInput.value = upper;
       try { checksumInput.setSelectionRange(selectionStart, selectionEnd); } catch (_) { /* no-op */ }
     });
+    node.addEventListener('input', revalidate);
+    node.addEventListener('change', revalidate);
     bindDrop(node);
     return node;
   }
+
+  // This modal writes its hint node directly instead of going through
+  // uiHelper's status registry, so it needs its own key in the generation map
+  // to be cancellable by a Clear the same way every other drop is.
+  const DROP_JOB_ID = 'additional-rom-checksum';
 
   function bindDrop(node) {
     const wrapper = node.querySelector('#additionalRomChecksumField');
     const input = node.querySelector('#additionalRomChecksum');
     const hint = wrapper.querySelector('.checksum-drop-hint');
-    const allowed = ['.zip', '.rar', '.7z'];
     const extension = name => String(name || '').toLowerCase().match(/\.[^.]+$/)?.[0] || '';
     ['dragenter', 'dragover'].forEach(type => wrapper.addEventListener(type, event => {
       event.preventDefault();
@@ -219,7 +249,9 @@
       wrapper.classList.remove('checksum-drop-active');
       const file = event.dataTransfer.files?.[0];
       if (!file) return;
-      if (!allowed.includes(extension(file.name))) {
+      const { allowed, scanExtension } = checksumRules();
+      const dropped = extension(file.name);
+      if (!allowed.includes(dropped)) {
         hint.textContent = `Invalid file type. Allowed: ${allowed.join(', ')}`;
         hint.classList.add('error');
         return;
@@ -227,10 +259,53 @@
       hint.classList.remove('error');
       hint.textContent = `Calculating MD5 for ${file.name}…`;
       wrapper.classList.add('checksum-is-loading');
+      const beginJob = window.VPS_UI?.beginChecksumJob;
+      const generation = typeof beginJob === 'function' ? beginJob(DROP_JOB_ID) : null;
+      const stillCurrent = () => generation === null
+        || window.VPS_UI?.isChecksumGenerationCurrent?.(DROP_JOB_ID, generation) !== false;
       try {
-        input.value = md5(await file.arrayBuffer());
-        hint.textContent = `MD5 calculated from ${file.name}`;
+        const ui = window.VPS_UI || {};
+        const canScan = Boolean(scanExtension)
+          && ARCHIVE_EXTENSIONS.includes(dropped)
+          && typeof ui.extractArchiveEntryChecksum === 'function';
+        // Exactly one match gets scanned out of the archive. Zero or several is
+        // ambiguous, so the archive itself is hashed, exactly as before — and an
+        // archive that cannot be opened at all takes the same route rather than
+        // failing a drop that would have worked on a non-Stern table.
+        let scanned = null;
+        if (canScan) {
+          try {
+            scanned = await ui.extractArchiveEntryChecksum(file, scanExtension, { requireExactlyOne: true });
+          } catch (scanError) {
+            console.warn('Archive scan failed, hashing the archive whole:', scanError);
+          }
+        }
+        // Cleared, or superseded by a newer drop, while the scan ran.
+        if (!stillCurrent()) return;
+        if (scanned?.checksum) {
+          input.value = String(scanned.checksum).toUpperCase();
+          hint.textContent = `MD5 calculated (${scanned.entryName}) from ${file.name}`;
+        } else {
+          // Stream the whole-archive hash rather than slurping it. The local
+          // md5() below is correct but needs the entire file as one
+          // ArrayBuffer, which fails past ~2 GB; VPS_UI.calculateMd5FromBlob
+          // feeds a worker from blob.stream() and is size-independent. It is
+          // kept as the fallback for the case where uiHelper has not loaded.
+          const hashWhole = ui.calculateMd5FromBlob;
+          const wholeChecksum = typeof hashWhole === 'function'
+            ? await hashWhole(file)
+            : md5(await file.arrayBuffer());
+          // Hashing a large archive is the slowest path here, so re-check.
+          if (!stillCurrent()) return;
+          input.value = wholeChecksum;
+          hint.textContent = canScan
+            ? `MD5 calculated (whole archive — no single ${scanExtension} inside) from ${file.name}`
+            : `MD5 calculated from ${file.name}`;
+        }
+        // Setting the value from code fires no input event.
+        revalidate();
       } catch (error) {
+        if (!stillCurrent()) return;
         hint.textContent = error?.message || 'MD5 calculation failed.';
         hint.classList.add('error');
       } finally {
@@ -264,6 +339,17 @@
     node.querySelector('#additionalRomChecksum').value = String(current.checksum || '');
     node.querySelector('#additionalRomVersionOverride').value = String(current.versionOverride || '');
     node.querySelector('#additionalRomUrlOverride').value = String(current.urlOverride || '');
+    // The dialog is created once and cached, so this cannot live in the markup:
+    // the accepted list depends on the currently loaded table's manufacturer.
+    // Reopening the modal abandons any drop still running from last time, so
+    // a slow hash cannot land in a different ROM entry than it was started on.
+    window.VPS_UI?.beginChecksumJob?.(DROP_JOB_ID);
+    const openHint = node.querySelector('.checksum-drop-hint');
+    if (openHint) {
+      openHint.classList.remove('error');
+      openHint.textContent = dropHintText();
+    }
+    liveDots = false;
     clearFieldErrorPresentation(node);
     node.querySelector('#additionalRomTitle').textContent = index >= 0 ? 'Edit Additional ROM' : 'Add Additional ROM';
     node.querySelector('#additionalRomRemove').hidden = index < 0;
@@ -284,16 +370,27 @@
     runtime.schedule();
   }
 
-  function save() {
-    const node = dialog();
-    const entry = {
+  function readEntry(node) {
+    return {
       vpsId: node.querySelector('#additionalRomVpsId').value.trim(),
       checksum: node.querySelector('#additionalRomChecksum').value.trim(),
       versionOverride: node.querySelector('#additionalRomVersionOverride').value.trim(),
       urlOverride: node.querySelector('#additionalRomUrlOverride').value.trim()
     };
+  }
+
+  function revalidate() {
+    if (!liveDots) return;
+    const node = dialog();
+    presentFieldErrors(node, validateEntryDetailed(readEntry(node), editingIndex));
+  }
+
+  function save() {
+    const node = dialog();
+    const entry = readEntry(node);
     const detailedErrors = validateEntryDetailed(entry, editingIndex);
     if (detailedErrors.length) {
+      liveDots = true;
       presentFieldErrors(node, detailedErrors);
       const firstInvalid = ['vpsId', 'checksum', 'versionOverride', 'urlOverride']
         .find(name => detailedErrors.some(error => error.field === name));

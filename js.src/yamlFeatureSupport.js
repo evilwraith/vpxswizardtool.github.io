@@ -29,8 +29,14 @@
 
   const CHECKSUM_KEYS = [
     'vpxChecksum', 'backglassChecksum', 'romChecksum', 'coloredROMChecksum',
-    'coloredROMChecksumSecondary', 'pupChecksum', 'diffChecksum', 'altSoundChecksum'
+    'coloredROMChecksumSecondary', 'pupChecksum', 'diffChecksum', 'altSoundChecksum',
+    'specialDMDChecksum'
   ];
+
+  // Keys whose value must never be written as a folded (`>-`) scalar. Folding
+  // rejoins the lines with spaces on read, which would silently corrupt a
+  // base64 payload. These take the same single-line quoted path URLs use.
+  const UNFOLDABLE_KEYS = new Set(['vpxMagic']);
 
   function uppercaseChecksums(data) {
     CHECKSUM_KEYS.forEach(key => {
@@ -49,6 +55,49 @@
     delete data.applyFixes;
 
     uppercaseChecksums(data);
+
+    // The builder holds up to four password slots; the YML carries one key.
+    // Collapsed and encoded here, at the edge, rather than in state - the
+    // fields the user sees and edits stay readable plain text.
+    //
+    // A single password stays a plain string, byte-identical to what shipped
+    // before multi-password support, so nothing already published changes.
+    // Two or more become a list. buildYaml's array branch writes one quoted
+    // item per line and never folds, so the base64 is safe either way.
+    const magicOutput = utils.buildVpxMagicOutput ? utils.buildVpxMagicOutput(data) : undefined;
+    // Explicit, not left to OMIT_FROM_YAML: vpxMagicAdditional holds PLAIN
+    // TEXT passwords, so a gap in the omit list would leak them unencoded.
+    delete data.vpxMagic2;
+    delete data.vpxMagic3;
+    delete data.vpxMagicAdditional;
+    delete data.__vpxMagicSlots;
+    if (magicOutput === undefined) delete data.vpxMagic;
+    else data.vpxMagic = magicOutput;
+
+    // A DMD bundled inside the VPX archive carries none of the standalone
+    // download keys. Dropped here as well as disabled in the UI, so a value
+    // typed before the shape was switched cannot leak into the output.
+    if (data.specialDMDBundled === true) {
+      // Same archive, described from each asset's side. The user answers the
+      // format once on the DMD tab; vpxArchiveFormat is mirrored from it here
+      // rather than being a second control asking the same question.
+      if (data.specialDMDArchiveFormat) data.vpxArchiveFormat = data.specialDMDArchiveFormat;
+      // Jason's call 2026-08-26: bundled, the DMD Archive Format field is only
+      // a store for the value vpxArchiveFormat carries, so the DMD key itself
+      // is not written. NOTE this contradicts new-YML-updates.txt, which lists
+      // specialDMDArchiveFormat as REQUIRED in the bundled shape - the spec
+      // text is the thing that is out of date, not this.
+      delete data.specialDMDArchiveFormat;
+      delete data.specialDMDChecksum;
+      delete data.specialDMDNotes;
+      delete data.specialDMDUrlOverride;
+      delete data.specialDMDVersion;
+    } else {
+      // Bundled-shape only. Nothing in the builder edits this key, so the only
+      // way it can be here is an imported bundled YML that has since been
+      // switched to the standalone shape.
+      delete data.vpxArchiveFormat;
+    }
 
     // The table-level NSFW flag is exclusive: when set, per-asset NSFW keys
     // must never appear alongside it (covers imported YAML that has both).
@@ -148,7 +197,7 @@
     }
 
     const cleanValue = cleanYamlString(value);
-    if (isUrlField(name)) {
+    if (isUrlField(name) || UNFOLDABLE_KEYS.has(name)) {
       // The yamllint rule this comment suppresses checks the full rendered
       // line, not the URL value alone — a value well under 120 characters
       // can still push `name: "value"` over the limit once the key and
@@ -162,9 +211,15 @@
       return `${prefix}${indent}${name}: "${cleanValue.replace(/\n+/g, ' ')}"\n`;
     }
 
-    if (cleanValue.includes('\n') || cleanValue.length > 120) {
+    // Same rule as the URL branch above: yamllint measures the whole line, so
+    // fold on the length of `name: "value"` as written, not the value alone.
+    // Measuring the value let a 118-character tagline out as a 129-character
+    // line, which the build validation then refused (found 2026-10-02). A folded line
+    // carries a 2-space indent on top of the text, so wrap 2 short of 120.
+    const quotedLength = indent.length + name.length + 4 + cleanValue.length;
+    if (cleanValue.includes('\n') || quotedLength > 120) {
       let output = `${indent}${name}: >-\n`;
-      wrapText(cleanValue, Math.max(40, 120 - indent.length)).forEach(line => {
+      wrapText(cleanValue, Math.max(40, 120 - indent.length - 2)).forEach(line => {
         output += line ? `${indent}  ${line}\n` : `${indent}  \n`;
       });
       return output;
@@ -223,13 +278,29 @@
     return yaml;
   }
 
+  // A folded or literal value (`key: >-`, `key: |`) carries on over every
+  // following line indented deeper than its key. Those lines are text, not
+  // keys, so they stay plain even when they hold a colon: a mainNotes of
+  // "Note: There is a known bug..." was coloured as a key and value
+  // (found 2026-10-04).
+  const BLOCK_SCALAR_HEADER = /:\s*[>|][1-9+-]{0,2}\s*(#.*)?$/;
+
   function highlightYaml(yaml) {
+    let blockIndent = -1;
     return String(yaml)
       .split('\n')
       .map(line => {
+        const indent = line.length - line.trimStart().length;
+        if (blockIndent >= 0) {
+          if (!line.trim() || indent > blockIndent) return escapeHtml(line);
+          blockIndent = -1;
+        }
+
         if (line.startsWith('#') || line.trimStart().startsWith('#') || line === '---') {
           return `<span class="yml-comment">${escapeHtml(line)}</span>`;
         }
+
+        if (BLOCK_SCALAR_HEADER.test(line)) blockIndent = indent;
 
         const objectListMatch = line.match(/^(\s*-\s+)([^:#][^:]*):(.*)$/);
         if (objectListMatch) {

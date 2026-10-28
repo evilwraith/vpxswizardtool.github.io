@@ -39,6 +39,12 @@
   z-index: 510;
   border-color: var(--panel-raised);
 }
+/* ID fields carry the same 5px padding as the drop zones (.field-id-standard in
+   category.css), so their dot needs the same shift to sit on the visible box. */
+.field-id-standard > .field-error-dot {
+  top: 1px;
+  right: 1px;
+}
 .checksum-drop-field.has-field-error > input {
   border-color: color-mix(in srgb, var(--state-red) 72%, var(--panel-line));
 }
@@ -144,6 +150,14 @@
 #additionalRomDialog .field.has-field-error > select,
 #additionalRomDialog .field.has-field-error > input {
   border-color: color-mix(in srgb, var(--state-red) 72%, var(--panel-line));
+}
+/* The editor's body scrolls, and a scroll box cuts off anything above its top
+   edge, so a tooltip rising from the first field went under the header. Inside
+   the editor every dot tooltip opens downward instead. */
+#additionalRomDialog .error-dot-tip,
+#additionalRomDialog .field-error-dot[data-tooltip]::before {
+  top: calc(100% + 8px);
+  bottom: auto;
 }
 .additional-rom-dialog-actions {
   display: flex;
@@ -372,57 +386,28 @@
 }
 
 /* Feature validation uses attribute-only markers so it does not retrigger legacy DOM observers. */
-.field.feature-has-field-error,
-.additional-rom-controls.feature-has-field-error {
+.field.feature-has-field-error {
   position: relative;
 }
-.field.feature-has-field-error::after,
-.additional-rom-controls.feature-has-field-error::after {
-  position: absolute;
+/* Every error dot is a real .field-error-dot element, so its tooltip is
+   hover-scoped to the dot. The Additional ROM one sits on the indicator's top
+   right corner, not on the header row; the indicator's own tooltip steps aside
+   while the dot's is showing. */
+.additional-rom-indicator > .field-error-dot,
+.additional-rom-add > .field-error-dot {
   z-index: 510;
-  top: -4px;
-  right: -4px;
-  box-sizing: border-box;
-  width: 9px;
-  height: 9px;
-  border: 2px solid var(--panel-soft);
-  border-radius: 50%;
-  background: var(--state-red);
-  box-shadow: 0 0 0 3px var(--state-red-soft);
-  content: '';
-  cursor: help;
-}
-.checksum-drop-field.feature-has-field-error::after,
-.additional-rom-controls.feature-has-field-error::after {
-  top: 1px;
-  right: 1px;
   border-color: var(--panel-raised);
 }
-.field.feature-has-field-error::before,
-.additional-rom-controls.feature-has-field-error::before {
-  position: absolute;
-  z-index: 520;
-  right: -2px;
-  bottom: calc(100% + 8px);
-  display: none;
-  width: max-content;
-  max-width: min(280px, calc(100vw - 32px));
-  padding: 6px 8px;
-  border: 1px solid color-mix(in srgb, var(--state-red) 55%, var(--panel-line));
-  border-radius: 7px;
-  background: var(--panel-raised);
-  box-shadow: var(--shadow-lift);
-  color: var(--text);
-  content: attr(data-feature-error-message);
-  font: 600 10.5px/1.35 "Inter", sans-serif;
-  text-transform: none;
-  white-space: normal;
+.additional-rom-indicator > .field-error-dot[data-tooltip]::before,
+.additional-rom-add > .field-error-dot[data-tooltip]::before,
+.additional-rom-indicator > .field-error-dot > .error-dot-tip,
+.additional-rom-add > .field-error-dot > .error-dot-tip {
+  z-index: 560;
+  letter-spacing: 0;
 }
-.field.feature-has-field-error:hover::before,
-.field.feature-has-field-error:focus-within::before,
-.additional-rom-controls.feature-has-field-error:hover::before,
-.additional-rom-controls.feature-has-field-error:focus-within::before {
-  display: block;
+.additional-rom-indicator:has(> .field-error-dot:hover)::after,
+.additional-rom-add:has(> .field-error-dot:hover)::after {
+  display: none;
 }
 .config-tab.feature-has-error {
   color: var(--danger);
@@ -438,4 +423,94 @@
   background: var(--danger);
   box-shadow: 0 0 0 3px var(--danger-soft);
   content: '';
+}
+
+/* VPX password overflow dialog. Deliberately mirrors the Additional ROMs
+   dialog above: same affordance in the same place on a different tab, so the
+   two read as one system rather than two conventions. The "+" control and the
+   indicator reuse the .additional-rom-* rules outright for the same reason. */
+.vpx-magic-dialog { width: min(560px, calc(100% - 28px)); }
+.vpx-magic-body { display: grid; gap: 12px; }
+.vpx-magic-note { margin: 0; color: var(--text-faint); font-size: 11.5px; }
+.vpx-magic-list { grid-template-columns: 1fr; gap: 10px; padding-top: 0; }
+.vpx-magic-row-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.vpx-magic-row-controls input { flex: 1 1 auto; min-width: 0; }
+.vpx-magic-remove,
+.vpx-magic-slot-remove {
+  flex: 0 0 auto;
+  width: 30px;
+  min-height: 30px;
+  padding: 0;
+  border: 1px solid var(--panel-line);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-faint);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+.vpx-magic-remove:hover,
+.vpx-magic-remove:focus-visible,
+.vpx-magic-slot-remove:hover,
+.vpx-magic-slot-remove:focus-visible {
+  border-color: var(--state-red);
+  color: var(--state-red);
+}
+/* The inline slot's remove sits at the right-hand end of the field, level with
+   the input rather than the label above it. */
+.field.vpx-magic-slot { position: relative; }
+.field.vpx-magic-slot > .vpx-magic-slot-remove {
+  position: absolute;
+  right: 6px;
+  bottom: 3px;
+}
+.field.vpx-magic-slot > input { padding-right: 42px; }
+.vpx-magic-add-row {
+  justify-self: start;
+  padding: 6px 10px;
+  border: 1px dashed var(--panel-line);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-faint);
+  font-size: 11.5px;
+  cursor: pointer;
+}
+.vpx-magic-add-row:hover,
+.vpx-magic-add-row:focus-visible { border-color: var(--accent); color: var(--accent); }
+.vpx-magic-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.vpx-magic-dialog-actions .preview-primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+/* Three-letter badges (VPX, B2S, ROM, DMD) do not need the width a full word
+   needs. Padding alone does nothing here: card.css pins every badge to a fixed
+   80px with matching min/max, so the WIDTH is what has to be overridden. */
+.asset-badge.is-short {
+  width: 54px;
+  min-width: 54px;
+  max-width: 54px;
+}
+
+/* Tabs share the row equally rather than each sizing to its own label.
+   category.css gives them `flex: 1 0 auto` - grow, but never shrink - which is
+   what forced the strip to scroll sideways once it got crowded. Equal basis
+   plus a shrink factor makes every tab the same width and keeps the whole set
+   on one line; the ellipsis is a floor for very narrow viewports, not the
+   normal case. */
+.config-tab {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

@@ -64,20 +64,6 @@
   box-shadow: 0 0 0 3px var(--state-red-soft);
   cursor: help;
 }
-.field[data-error-count]:not([data-error-count="1"]) .field-error-dot::after {
-  position: absolute;
-  top: -11px;
-  right: -11px;
-  min-width: 14px;
-  padding: 1px 3px;
-  border-radius: 999px;
-  background: var(--state-red);
-  color: #fff;
-  content: attr(data-error-count);
-  font: 700 8px/12px "Inter", sans-serif;
-  text-align: center;
-}
-
 /* Combined Assets + Configuration status details for the YAML preview dot. */
 #previewHeading {
   position: relative;

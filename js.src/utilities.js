@@ -70,6 +70,15 @@
     return (usable || list.find(entry => entry && typeof entry.url === 'string' && entry.url.trim()))?.url?.trim() || '';
   }
 
+  // The VPS website's own listing page for a table. Lives here rather than at
+  // the call site so the one external URL the app links to is written once.
+  const VPS_LISTING_BASE = 'https://virtualpinballspreadsheet.github.io/games';
+
+  function getVpsListingUrl(id) {
+    const value = String(id ?? '').trim();
+    return value ? `${VPS_LISTING_BASE}?game=${encodeURIComponent(value)}` : '';
+  }
+
   const EXCLUDED_VPX_FORMATS = new Set(['FP', 'FX', 'FX2', 'FX3']);
 
   function normalizeList(value) {
@@ -146,6 +155,32 @@
         const parentId = getParentId(item);
         return !parentId || (selectedVpxId && parentId === selectedVpxId);
       }));
+    }
+
+    if (category === 'specialDMD') {
+      // A DMD has no VPS entry of its own — it is declared as a feature on the
+      // VPX file. These pseudo-items exist ONLY to drive the asset row's status
+      // light: Available when the table declares a DMD, Unavailable when it
+      // does not. They deliberately do NOT feed the row's dropdown, which always
+      // offers every config.dmdTypes entry, because VPS feature tags are not
+      // reliably labelled and a wrong tag must not block the user.
+      const types = Array.isArray(config.dmdTypes) ? config.dmdTypes : [];
+      const selectedVpxId = String(context?.selections?.tableFiles ?? context?.selectedVpxId ?? '').trim();
+      // A DMD belongs to one specific VPX, so with no VPX chosen there is
+      // nothing to declare it. Falling back to "scan every table file" here lit
+      // the row up as Available on a fresh search, before any VPX was picked.
+      if (!selectedVpxId) return [];
+      const tableFiles = Array.isArray(record.tableFiles) ? record.tableFiles : [];
+      const source = tableFiles.filter(item => String(item?.id ?? '').trim() === selectedVpxId);
+      const declared = new Set();
+      source.forEach(item => {
+        normalizeList(item?.features ?? item?.Features).forEach(feature => {
+          const label = String(feature).trim().toLowerCase();
+          const match = types.find(type => type.toLowerCase() === label);
+          if (match) declared.add(match);
+        });
+      });
+      return types.filter(type => declared.has(type)).map(type => ({ id: type, name: type }));
     }
 
     const sourceFields = Array.isArray(config.sourceFields) && config.sourceFields.length
@@ -225,10 +260,6 @@
     return output;
   }
 
-  function cleanYamlString(value) {
-    return String(value).replace(/"/g, "'").trim();
-  }
-
   function isMd5Hash(value) {
     return typeof value === 'string' && /^[a-f0-9]{32}$/i.test(value.trim());
   }
@@ -244,134 +275,14 @@
   // see js.src/checksumAdditionalController.js). Anything that edits the
   // primary value directly (typing, or a file-drop MD5 calculation) must
   // replace only index 0 and keep the rest, or those additional entries are
-  // silently dropped.
+  // silently dropped. Clearing the primary leaves index 0 blank rather than
+  // promoting an additional entry into it; on the VPX tab that entry can be an
+  // archive MD5 (Jason, 2026-10-13).
   function replacePrimaryChecksum(current, next) {
     const value = String(next || '').trim();
-    if (!Array.isArray(current) || current.length < 2) return value;
+    if (!Array.isArray(current)) return value;
     const rest = current.slice(1).map(item => String(item || '').trim()).filter(Boolean);
-    const combined = value ? [value, ...rest] : rest;
-    return combined.length > 1 ? combined : (combined[0] || '');
-  }
-
-  function buildYaml(values, options = {}) {
-    const data = { ...values };
-    const omit = options.omit instanceof Set ? options.omit : new Set(options.omit || []);
-
-    // `enabled` is only written to YAML when the user explicitly opts in to
-    // "Disable for Wizard" (enabled === false). Any other state (undefined /
-    // true) is treated as "not disabled" and is omitted from the output.
-
-    // Deprecated applyFix values must never leak into newly generated YAML.
-    delete data.bass;
-    delete data.applyFixes;
-
-    // PAL/VNI mode produces the two-checksum list expected by the upstream schema.
-    // In Serum/CRZ mode, coloredROMPin2DMD is omitted entirely.
-    const primaryColorChecksum = Array.isArray(data.coloredROMChecksum)
-      ? data.coloredROMChecksum[0]
-      : data.coloredROMChecksum;
-    const secondaryColorChecksum = data.coloredROMChecksumSecondary
-      ?? (Array.isArray(data.coloredROMChecksum) ? data.coloredROMChecksum[1] : '');
-    if (data.coloredROMPin2DMD === true) {
-      const checksums = [primaryColorChecksum, secondaryColorChecksum]
-        .map(value => String(value || '').trim())
-        .filter(Boolean);
-      if (checksums.length) data.coloredROMChecksum = checksums;
-      else delete data.coloredROMChecksum;
-    } else {
-      delete data.coloredROMPin2DMD;
-      if (primaryColorChecksum) data.coloredROMChecksum = String(primaryColorChecksum).trim();
-      else delete data.coloredROMChecksum;
-    }
-    delete data.coloredROMChecksumSecondary;
-
-    ['testers', 'backglassAuthorsOverride'].forEach(key => {
-      const normalized = normalizeArray(data[key]);
-      if (normalized.length) data[key] = normalized;
-      else delete data[key];
-    });
-
-    ['fps', 'tableYearOverride'].forEach(key => {
-      if (data[key] === '' || data[key] === undefined || data[key] === null) {
-        delete data[key];
-        return;
-      }
-      const parsed = Number.parseInt(data[key], 10);
-      if (Number.isFinite(parsed)) data[key] = parsed;
-      else delete data[key];
-    });
-
-    const entries = Object.entries(data)
-      .filter(([key, value]) => {
-        if (omit.has(key) || key.startsWith('__') || key.endsWith('_check')) return false;
-        if (Array.isArray(value)) return value.length > 0;
-        if (typeof value === 'string') return value.trim() !== '';
-        if (typeof value === 'number') return Number.isFinite(value);
-        if (typeof value === 'boolean') return key === 'enabled' ? value === false : value === true;
-        return false;
-      })
-      .sort(([left], [right]) => left.localeCompare(right));
-
-    let yaml = '---\n';
-
-    entries.forEach(([name, value]) => {
-      if (Array.isArray(value)) {
-        yaml += `${name}:\n`;
-        value.forEach(item => {
-          yaml += `  - "${cleanYamlString(item)}"\n`;
-        });
-        return;
-      }
-
-      if (typeof value === 'number' || typeof value === 'boolean') {
-        yaml += `${name}: ${value}\n`;
-        return;
-      }
-
-      const cleanValue = cleanYamlString(value);
-      const isUrlField = name.endsWith('UrlOverride') || name.endsWith('FileUrl');
-
-      if (isUrlField) {
-        if (cleanValue.length > 120) {
-          yaml += '# yamllint disable-line rule:line-length\n';
-        }
-        yaml += `${name}: "${cleanValue.replace(/\n+/g, ' ')}"\n`;
-        return;
-      }
-
-      if (cleanValue.includes('\n') || cleanValue.length > 120) {
-        yaml += `${name}: >-\n`;
-        wrapText(cleanValue, 120).forEach(line => {
-          yaml += line ? `  ${line}\n` : '  \n';
-        });
-        return;
-      }
-
-      yaml += `${name}: "${cleanValue}"\n`;
-    });
-
-    return yaml;
-  }
-
-  function highlightYaml(yaml) {
-    return String(yaml)
-      .split('\n')
-      .map(line => {
-        if (line.startsWith('#') || line === '---') {
-          return `<span class="yml-comment">${escapeHtml(line)}</span>`;
-        }
-
-        const listMatch = line.match(/^(\s*-\s+)(.*)$/);
-        if (listMatch) {
-          return `${escapeHtml(listMatch[1])}<span class="yml-value">${escapeHtml(listMatch[2])}</span>`;
-        }
-
-        const keyMatch = line.match(/^(\s*)([^:#][^:]*):(.*)$/);
-        if (!keyMatch) return escapeHtml(line);
-
-        return `${escapeHtml(keyMatch[1])}<span class="yml-key">${escapeHtml(keyMatch[2])}</span>:<span class="yml-value">${escapeHtml(keyMatch[3])}</span>`;
-      })
-      .join('\n');
+    return rest.length ? [value, ...rest] : value;
   }
 
   function safeFilename(value, fallback = 'output') {
@@ -427,16 +338,34 @@
     if (!item) return '';
     const id = item.id || 'Unknown ID';
     const version = item.version ? String(item.version).replace(/^v/i, '') : '—';
-    return `${id} · ${version} · ${formatDateDMY(item.createdAt)}`;
+    // The UPDATED date, not the created one: what matters when choosing between
+    // versions is when the file last changed. Resolved through
+    // itemUpdatedTimestamp rather than reading item.updatedAt directly, because
+    // VPS records are inconsistent about which key carries it - that helper
+    // already walks updatedAt / modifiedAt / lastUpdated / updated and falls
+    // back to createdAt, so a record without an update stamp still shows a date
+    // instead of an em-dash.
+    return `${id} · ${version} · ${formatDateDMY(itemUpdatedTimestamp(item))}`;
   }
 
   function extractArchiveDirectories(entries) {
     const directories = [];
     (Array.isArray(entries) ? entries : []).forEach(entry => {
-      const path = String(entry?.path || '')
+      let path = String(entry?.path || '')
         .replace(/\\/g, '/')
         .replace(/^\/+|\/+$/g, '');
       if (!path) return;
+      // The streaming listers report one entry per archive member, so `path`
+      // ends in that member's own name. A file contributes only its parent
+      // folders — `PUPVideos/Matrix/intro.mp4` is not a choosable archive root.
+      // libarchive's entries already carry a directory-only prefix and leave
+      // `isFile` undefined, so they fall through untouched.
+      if (entry?.isFile === true) {
+        const cut = path.lastIndexOf('/');
+        if (cut === -1) return;
+        path = path.slice(0, cut);
+        if (!path) return;
+      }
       const segments = path.split('/').filter(Boolean);
       for (let index = 1; index <= segments.length; index += 1) {
         directories.push(segments.slice(0, index).join('/'));
@@ -571,7 +500,9 @@
           const nameLen = Number(nameLenInfo.value);
           if (nameLen > 0 && pos + nameLen <= bytes.length) {
             const name = decoder.decode(bytes.subarray(pos, pos + nameLen));
-            if (name) entries.push({ path: name });
+            // FHFL_DIRECTORY (0x01) marks a directory entry; everything else
+            // is a file, whose own name must not become a directory.
+            if (name) entries.push({ path: name, isFile: (fileFlags & 0x01) === 0 });
           }
         } catch (_) { /* skip malformed entry */ }
       }
@@ -584,14 +515,194 @@
     return entries;
   }
 
+  // -----------------------------------------------------------------------
+  // Streaming ZIP entry lister.
+  //
+  // A ZIP keeps its table of contents — the "central directory" — at the END
+  // of the file, and every record in it carries that entry's full path. So
+  // listing an archive means reading a few kilobytes from the tail instead of
+  // the whole file, which is the only way to browse archives past Chrome's
+  // ~2 GB Blob.arrayBuffer ceiling. Handles ZIP64 (over 4 GB, or over 65535
+  // entries). Returns `{ path, isFile }` entries compatible with
+  // `extractArchiveDirectories`, or `null` if the blob isn't a ZIP.
+  // -----------------------------------------------------------------------
+
+  const ZIP_LOCAL_SIG = 0x04034b50;     // PK\x03\x04 — first local file header
+  const ZIP_CENTRAL_SIG = 0x02014b50;   // PK\x01\x02 — central directory record
+  const ZIP_EOCD_SIG = 0x06054b50;      // PK\x05\x06 — end of central directory
+  const ZIP64_EOCD_SIG = 0x06064b50;    // PK\x06\x06 — ZIP64 end of central directory
+  const ZIP64_LOCATOR_SIG = 0x07064b50; // PK\x06\x07 — ZIP64 EOCD locator
+
+  const ZIP_EOCD_MIN = 22;              // an EOCD with no trailing comment
+  const ZIP_MAX_COMMENT = 0xffff;       // comment length is a 16-bit field
+  const ZIP_MAX_CD_BYTES = 64 * 1024 * 1024; // sanity cap (~half a million entries)
+  const ZIP_MAX_ENTRIES = 500000;       // safety cap on the walk
+
+  async function listZipEntryPaths(blob) {
+    if (!blob || typeof blob.slice !== 'function' || typeof blob.arrayBuffer !== 'function') return null;
+    const total = blob.size;
+    if (total < ZIP_EOCD_MIN) return null;
+
+    // A ZIP opens with a local file header, or (when empty) the EOCD itself.
+    const head = await readSlice(blob, 0, 4);
+    if (head.length < 4) return null;
+    const headSig = new DataView(head.buffer, head.byteOffset, head.byteLength).getUint32(0, true);
+    if (headSig !== ZIP_LOCAL_SIG && headSig !== ZIP_EOCD_SIG) return null;
+
+    // The EOCD is at most 22 bytes plus a 64 KB comment, so it is always in
+    // the tail. Scan backwards for its signature.
+    const tailLength = Math.min(total, ZIP_EOCD_MIN + ZIP_MAX_COMMENT);
+    const tail = await readSlice(blob, total - tailLength, tailLength);
+    const tailView = new DataView(tail.buffer, tail.byteOffset, tail.byteLength);
+
+    let eocd = -1;
+    for (let index = tail.length - ZIP_EOCD_MIN; index >= 0; index -= 1) {
+      if (tailView.getUint32(index, true) === ZIP_EOCD_SIG) { eocd = index; break; }
+    }
+    if (eocd === -1) return null;
+
+    let cdSize = tailView.getUint32(eocd + 12, true);
+    let cdOffset = tailView.getUint32(eocd + 16, true);
+    const entryCount = tailView.getUint16(eocd + 10, true);
+
+    // ZIP64: the 32-bit fields saturate and a locator sits just before the
+    // EOCD, pointing at a record that holds the real 64-bit values.
+    const saturated = entryCount === 0xffff || cdSize === 0xffffffff || cdOffset === 0xffffffff;
+    const locator = eocd - 20;
+    if (saturated && locator >= 0 && tailView.getUint32(locator, true) === ZIP64_LOCATOR_SIG) {
+      const zip64Offset = Number(tailView.getBigUint64(locator + 8, true));
+      if (zip64Offset >= 0 && zip64Offset + 56 <= total) {
+        const zip64 = await readSlice(blob, zip64Offset, 56);
+        const zip64View = new DataView(zip64.buffer, zip64.byteOffset, zip64.byteLength);
+        if (zip64.length >= 56 && zip64View.getUint32(0, true) === ZIP64_EOCD_SIG) {
+          cdSize = Number(zip64View.getBigUint64(40, true));
+          cdOffset = Number(zip64View.getBigUint64(48, true));
+        }
+      }
+    }
+
+    if (!(cdSize > 0) || cdOffset < 0 || cdOffset + cdSize > total) return null;
+    if (cdSize > ZIP_MAX_CD_BYTES) return null;
+
+    const cd = await readSlice(blob, cdOffset, cdSize);
+    if (cd.length < cdSize) return null;
+    const cdView = new DataView(cd.buffer, cd.byteOffset, cd.byteLength);
+    // Names are CP437 unless flag bit 11 says UTF-8, but UTF-8 is the norm in
+    // practice and a non-fatal decode degrades rather than throws.
+    const decoder = new TextDecoder('utf-8', { fatal: false });
+    const entries = [];
+    let pos = 0;
+
+    while (pos + 46 <= cd.length && entries.length < ZIP_MAX_ENTRIES) {
+      if (cdView.getUint32(pos, true) !== ZIP_CENTRAL_SIG) break;
+      const nameLength = cdView.getUint16(pos + 28, true);
+      const extraLength = cdView.getUint16(pos + 30, true);
+      const commentLength = cdView.getUint16(pos + 32, true);
+      const nameStart = pos + 46;
+      if (nameStart + nameLength > cd.length) break;
+      if (nameLength > 0) {
+        const name = decoder.decode(cd.subarray(nameStart, nameStart + nameLength));
+        // A trailing slash is how ZIP marks a directory entry.
+        if (name) entries.push({ path: name, isFile: !name.endsWith('/') });
+      }
+      pos = nameStart + nameLength + extraLength + commentLength;
+    }
+
+    return entries;
+  }
+
   async function listArchiveEntryPaths(blob) {
     // Try format-specific streaming parsers first (works for archives of any size).
     // Returns null if the format isn't one we can stream — caller should fall back.
     try {
       const rar5 = await listRar5EntryPaths(blob);
       if (rar5) return rar5;
+    } catch (_) { /* fall through to the next parser */ }
+    try {
+      const zip = await listZipEntryPaths(blob);
+      if (zip) return zip;
     } catch (_) { /* fall through to null */ }
     return null;
+  }
+
+  // vpxMagic - the "Password" field on the VPX tab - is typed and stored as
+  // plain text and written to the YML base64-encoded. btoa alone cannot do
+  // this: it throws on any character above U+00FF, and a password field is
+  // exactly where those turn up. Encode to UTF-8 bytes first.
+  function encodeVpxMagic(value) {
+    const text = String(value ?? '').trim();
+    if (!text) return '';
+    const bytes = new TextEncoder().encode(text);
+    let binary = '';
+    bytes.forEach(byte => { binary += String.fromCharCode(byte); });
+    return btoa(binary);
+  }
+
+  // The inverse, used on YML import so a round-trip does not double-encode.
+  // A hand-written YML may carry a value that was never encoded, and atob
+  // happily decodes plenty of ordinary words into garbage rather than
+  // throwing, so a decode is only trusted when re-encoding it reproduces the
+  // input byte for byte. Anything else is treated as already-plain text.
+  // A plain password that IS valid base64 of valid UTF-8 is genuinely
+  // ambiguous and decodes; nothing can distinguish those two cases.
+  function decodeVpxMagic(value) {
+    const text = String(value ?? '').trim();
+    if (!text) return '';
+    try {
+      const binary = atob(text);
+      const bytes = Uint8Array.from(binary, character => character.charCodeAt(0));
+      const decoded = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+      return encodeVpxMagic(decoded) === text ? decoded : text;
+    } catch (_) {
+      return text;
+    }
+  }
+
+  // The builder holds passwords in four places: vpxMagic (the original field),
+  // vpxMagic2 and vpxMagic3 (revealed on demand in Advanced Config), and
+  // vpxMagicAdditional (a list owned by the overflow dialog). The YML carries
+  // ONE key. These two functions are the only place that mapping lives, for
+  // the same reason encode and decode are shared: a second copy is how the two
+  // halves of a round trip drift apart.
+  const VPX_MAGIC_INLINE_KEYS = ['vpxMagic', 'vpxMagic2', 'vpxMagic3'];
+
+  // State -> ordered list of plain-text passwords, blanks dropped. Dropping
+  // blanks is what lets slot 2 be cleared without stranding slot 3.
+  function collectVpxMagic(values) {
+    const source = values || {};
+    const extra = Array.isArray(source.vpxMagicAdditional) ? source.vpxMagicAdditional : [];
+    return [...VPX_MAGIC_INLINE_KEYS.map(key => source[key]), ...extra]
+      .map(entry => String(entry ?? '').trim())
+      .filter(Boolean);
+  }
+
+  // The inverse, used on import: fill the inline slots in order, then overflow
+  // the rest into the dialog's list. Mutates and returns `values`.
+  function distributeVpxMagic(list, values) {
+    const target = values || {};
+    const clean = (Array.isArray(list) ? list : [list])
+      .map(entry => String(entry ?? '').trim())
+      .filter(Boolean);
+    VPX_MAGIC_INLINE_KEYS.forEach((key, index) => {
+      if (clean[index]) target[key] = clean[index];
+      else delete target[key];
+    });
+    const overflow = clean.slice(VPX_MAGIC_INLINE_KEYS.length);
+    if (overflow.length) target.vpxMagicAdditional = overflow;
+    else delete target.vpxMagicAdditional;
+    return target;
+  }
+
+  // The single decision about what the YML actually carries, kept here beside
+  // the codec so a test can drive it without standing up prepareData's world.
+  //
+  // Returns undefined when there is nothing to write, a plain base64 string for
+  // one password - byte-identical to what shipped before multi-password
+  // support, so nothing already published changes - and a list for two or more.
+  function buildVpxMagicOutput(values) {
+    const encoded = collectVpxMagic(values).map(encodeVpxMagic).filter(Boolean);
+    if (!encoded.length) return undefined;
+    return encoded.length === 1 ? encoded[0] : encoded;
   }
 
   window.VPS_UTILS = {
@@ -600,6 +711,7 @@
     formatDate,
     isItemBroken,
     getItemUrl,
+    getVpsListingUrl,
     isExcludedVpxFormat,
     isVpuPatchItem,
     getParentId,
@@ -609,8 +721,6 @@
     getCoverUrl,
     normalizeArray,
     wrapText,
-    buildYaml,
-    highlightYaml,
     safeFilename,
     downloadText,
     copyText,
@@ -621,6 +731,13 @@
     replacePrimaryChecksum,
     extractArchiveDirectories,
     listArchiveEntryPaths,
-    cssEscape
+    cssEscape,
+    // Shared so the serializer and the YML importer cannot drift apart.
+    encodeVpxMagic,
+    decodeVpxMagic,
+    collectVpxMagic,
+    distributeVpxMagic,
+    buildVpxMagicOutput,
+    VPX_MAGIC_INLINE_KEYS
   };
 })();

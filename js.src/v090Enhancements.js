@@ -26,7 +26,6 @@
       enhanceGameVpsId();
       enhanceAssetBadges();
       enhanceColorRomFields();
-      decorateCustomValidation();
       refreshPreviewBreakdown();
     });
   }
@@ -234,127 +233,12 @@
     updateColorHints();
   }
 
-  function readValue(fieldName) {
-    if (latestValues && Object.prototype.hasOwnProperty.call(latestValues, fieldName)) {
-      return latestValues[fieldName];
-    }
-    const control = document.getElementById(`field-${fieldName}`);
-    if (!control) return '';
-    if (control.matches('input[type="checkbox"]')) return control.checked;
-    return control.value ?? control.textContent ?? '';
-  }
-
-  function hasText(value) {
-    return Array.isArray(value)
-      ? value.some(item => String(item || '').trim())
-      : String(value ?? '').trim().length > 0;
-  }
-
-  function stepEnabled(stepId) {
-    const step = WIZARD_STEPS.find(candidate => candidate.id === stepId);
-    return Boolean(step && latestAccordion?.callbacks?.isEnabled?.(step));
-  }
-
-  function customValidationErrors() {
-    const errors = [];
-    const add = (stepId, fieldName, title, message) => errors.push({ stepId, fieldName, title, message });
-    const pair = (stepId, urlField, versionField, label) => {
-      if (!stepEnabled(stepId)) return;
-      const hasUrl = hasText(readValue(urlField));
-      const hasVersion = hasText(readValue(versionField));
-      if (hasUrl && !hasVersion) add(stepId, versionField, `${label} version override is required`, `Add ${label} Version Override when using ${label} URL Override.`);
-      if (hasVersion && !hasUrl) add(stepId, urlField, `${label} URL override is required`, `Add ${label} URL Override when using ${label} Version Override.`);
-    };
-
-    pair('rom', 'romUrlOverride', 'romVersionOverride', 'ROM');
-    pair('coloredRom', 'coloredROMUrlOverride', 'coloredROMVersionOverride', 'Color ROM');
-    pair('vpuPatch', 'diffUrlOverride', 'diffVersionOverride', 'Patch');
-
-    if (stepEnabled('b2s') && hasText(readValue('backglassUrlOverride'))) {
-      if (!hasText(readValue('backglassAuthorsOverride'))) {
-        add('b2s', 'backglassAuthorsOverride', 'Backglass authors override is required', 'Add at least one Backglass Authors Override when using Backglass URL Override.');
-      }
-      if (!hasText(readValue('backglassImageOverride'))) {
-        add('b2s', 'backglassImageOverride', 'Backglass image override is required', 'Add Backglass Image Override when using Backglass URL Override.');
-      }
-    }
-
-    if (stepEnabled('vpuPatch') && !hasText(readValue('diffChecksum'))) {
-      add('vpuPatch', 'diffChecksum', 'VPU Patch Checksum is required', 'Add a valid MD5 value for VPU Patch Checksum.');
-    }
-    return errors;
-  }
-
-  function fieldWrapper(fieldName) {
-    return document.getElementById(`field-${fieldName}`)?.closest('.field') || null;
-  }
-
-  function clearCustomFieldDots() {
-    document.querySelectorAll('.field-error-dot.v090-error-dot').forEach(dot => {
-      const wrapper = dot.closest('.field');
-      dot.remove();
-      if (!wrapper?.querySelector('.field-error-dot')) wrapper?.classList.remove('has-field-error');
-    });
-  }
-
-  function addCustomFieldDot(error) {
-    const wrapper = fieldWrapper(error.fieldName);
-    if (!wrapper) return;
-    wrapper.classList.add('has-field-error');
-    const dot = document.createElement('span');
-    dot.className = 'field-error-dot v090-error-dot';
-    dot.dataset.tooltip = error.message;
-    dot.setAttribute('role', 'img');
-    dot.setAttribute('aria-label', error.message);
-    dot.tabIndex = 0;
-    wrapper.appendChild(dot);
-  }
-
-  function decorateCustomValidation() {
-    document.querySelectorAll('.field-error-dot[title]').forEach(dot => {
-      dot.dataset.tooltip = dot.getAttribute('title') || dot.getAttribute('aria-label') || '';
-      dot.removeAttribute('title');
-      dot.tabIndex = 0;
-    });
-
-    clearCustomFieldDots();
-    const errors = customValidationErrors();
-    const activeStep = document.querySelector('#accordionStack .config-tab-panel')?.dataset.step;
-    errors.filter(error => error.stepId === activeStep).forEach(addCustomFieldDot);
-
-    // Tab-level has-error/has-warning classes are now written exclusively by
-    // main.js's refreshTabStatuses(), which merges this same customValidationErrors()
-    // output alongside base and feature validation into one canonical per-tab
-    // status. Duplicating that write here used to race with it.
-  }
-
-  function appendCustomErrorsToDialog() {
-    const errors = customValidationErrors();
-    if (!errors.length) return;
-    const list = document.querySelector('#validationBody .validation-list');
-    if (!list) return;
-    list.querySelector('.validation-item.success')?.remove();
-    const existing = new Set([...list.querySelectorAll('.validation-item strong')].map(node => node.textContent));
-    errors.forEach(error => {
-      if (existing.has(error.title)) return;
-      const item = document.createElement('li');
-      item.className = 'validation-item error v090-validation-item';
-      const title = document.createElement('strong');
-      title.textContent = error.title;
-      const message = document.createElement('span');
-      message.textContent = error.message;
-      item.append(title, message);
-      list.appendChild(item);
-    });
-  }
-
-  function openValidationWithCustomErrors() {
-    document.getElementById('validateBtn')?.click();
-    window.setTimeout(appendCustomErrorsToDialog, 0);
-  }
+  // This file's rules live in validationRules.js (system 'v090') since
+  // 2026-10-06, and its field dots are drawn by uiEnhancements.js.
 
   function firstErrorStep() {
-    const custom = customValidationErrors();
+    const custom = window.VPS_VALIDATION.collectAllErrors(window.VPS_MAIN.validationContext())
+      .filter(issue => issue.system === 'v090');
     for (const step of WIZARD_STEPS) {
       if (!latestAccordion?.callbacks?.isEnabled?.(step)) continue;
       const internal = latestAccordion.callbacks.getStatus?.(step)?.className === 'error';
@@ -364,7 +248,7 @@
   }
 
   function navigateToFirstError() {
-    decorateCustomValidation();
+    window.VPS_ERROR_DOTS?.refresh?.();
     const stepId = firstErrorStep();
     if (stepId) {
       jumpToConfig(stepId);
@@ -542,32 +426,9 @@
 
   document.addEventListener('input', queueRefresh, true);
 
-  document.addEventListener('click', event => {
-    const button = event.target instanceof Element ? event.target.closest('button') : null;
-    if (!button) return;
-
-    if (button.id === 'validateBtn') {
-      window.setTimeout(appendCustomErrorsToDialog, 0);
-      return;
-    }
-
-    if ((button.id === 'drawerCopyBtn' || button.id === 'downloadBtn') && customValidationErrors().length) {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      openValidationWithCustomErrors();
-    }
-  }, true);
-
-  document.addEventListener('keydown', event => {
-    if (!(event.ctrlKey || event.metaKey) || event.key !== 'Enter') return;
-    if (event.shiftKey && customValidationErrors().length) {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      openValidationWithCustomErrors();
-    } else {
-      window.setTimeout(appendCustomErrorsToDialog, 0);
-    }
-  }, true);
+  // The Validate dialog lines and Copy/Download blocking for these rules now
+  // come from main.js through validationRules.js. This file used to append to
+  // the dialog and intercept those clicks and Ctrl+Enter itself.
 
   function init() {
     initHelpTabs();
@@ -591,8 +452,6 @@
       observer.observe(document.body, { childList: true, subtree: true });
     }
   }
-
-  window.VPS_V090_VALIDATION = Object.freeze({ errors: customValidationErrors });
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });
   else init();

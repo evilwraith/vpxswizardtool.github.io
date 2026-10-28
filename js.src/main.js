@@ -13,12 +13,8 @@
     safeFilename,
     downloadText,
     copyText,
-    isItemBroken,
     getCategoryItems,
-    getAssetState,
-    normalizeArray,
-    isMd5Hash,
-    normalizeChecksumValue
+    getAssetState
   } = window.VPS_UTILS;
   const SEARCH = window.VPS_SEARCH;
   const UI = window.VPS_UI;
@@ -333,6 +329,22 @@
       delete values.coloredROMChecksumSecondary;
     }
 
+    // Every writer keeps one checksum as a plain string and only two or more
+    // as a list. A draft saved by an older build, or edited by hand, can still
+    // hold a list of one, so it is brought into line here (Phase 2 decision 4,
+    // Jason, 2026-10-12). The Color ROM checksum was split above.
+    ['vpxChecksum', 'backglassChecksum', 'romChecksum', 'pupChecksum', 'altSoundChecksum', 'diffChecksum', 'specialDMDChecksum'].forEach(key => {
+      if (!Array.isArray(values[key])) return;
+      const checksums = values[key].map(value => String(value ?? '').trim()).filter(Boolean);
+      if (checksums.length > 1) return;
+      // Only a primary is promoted. A lone entry behind a blank first one is
+      // a secondary (a bundled DMD's archive MD5 with the .vpx MD5 missing),
+      // so the list is kept and the missing primary is still reported.
+      if (checksums.length && !String(values[key][0] ?? '').trim()) return;
+      if (checksums.length) values[key] = checksums[0];
+      else delete values[key];
+    });
+
     return values;
   }
 
@@ -341,6 +353,11 @@
     state.record = record;
     state.selections = options.selections ? { ...options.selections } : {};
     state.values = migrateBuildValues({ ...baseValues, ...(options.values || {}), tableVPSId: record.id || '' });
+    // Mirrored into values because the field renderer is handed state.values
+    // and nothing else — renderAccordions' signature is re-wrapped by five
+    // correction layers, so widening it is not worth the blast radius.
+    // Kept out of the output by OMIT_FROM_YAML.
+    state.values.__tableManufacturer = String(record.manufacturer || '');
     state.openAssetDetails = new Set(options.openAssetDetails || []);
     state.openSteps = new Set();
     state.activeStep = options.activeStep || state.activeStep || 'main';
@@ -371,6 +388,16 @@
       onBundle: handleBundleChange,
       onNsfw: handleNsfwChange,
       onOverride: handleOverrideChange,
+      // The DMD row's dropdown writes specialDMDType straight through the
+      // normal field path: it picks a type, not a VPS asset, so it must not go
+      // through onSelect and land in `selections`. The extra renderWorkspace is
+      // what lets the DMD tab unlock: handleFieldChange calls
+      // refreshTabStatuses, which only repaints a tab's status classes and
+      // never re-evaluates which tabs are enabled.
+      onChange: (key, value) => {
+        handleFieldChange(key, value);
+        renderWorkspace();
+      },
       onToggleDetail: toggleAssetDetail,
       isDetailOpen: category => state.openAssetDetails.has(category)
     });
@@ -440,13 +467,86 @@
     markChanged();
   }
 
+  // Which of a step's mirrored fields are live right now. A mirrored field is a
+  // VIEW of another field's list entry rather than a value of its own - bundled,
+  // the DMD checksum IS vpxChecksum's second entry - so the value lives on a tab
+  // this step does not own, and a shape switch has to reach across to tear it
+  // down. Nothing else in clearShapeDisabledFields leaves the step's own fields.
+  //
+  // Captured BEFORE the switch on purpose. Read afterwards, this cannot tell
+  // "the user just left the bundled shape" from "the user was never in it", and
+  // the second case must never touch a hand-entered additional checksum.
+  function liveMirrors(step) {
+    return (step?.fields || [])
+      .filter(field => field.mirrorFrom && state.values[field.mirrorFrom.when] === true)
+      .map(field => field.mirrorFrom);
+  }
+
+  // A shape switch takes the keys the new shape does not carry with it.
+  // prepareData already drops them from the YAML and the fields are disabled
+  // either way, but leaving the values on screen reads as "this is still set"
+  // when the output has already let go of it.
+  function clearShapeDisabledFields(step, mirrorsBefore = []) {
+    if (!step) return;
+    const shapeGated = (step.fields || []).some(field => field.disabledWhen);
+    (step.fields || []).forEach(field => {
+      if (field.disabledWhen && state.values[field.disabledWhen] === true) {
+        delete state.values[field.yml_field];
+      }
+    });
+    // Leaving a mirrored shape takes the borrowed entry with it. The bundled DMD
+    // writes the archive MD5 into vpxChecksum's second slot; switch to Override
+    // and the DMD carries its own checksum again, so that entry now describes an
+    // archive this build bundles nothing into. It was staying behind on the VPX
+    // tab as a stale "additional checksum" - the whole DMD side cleared and the
+    // hash it had cross-written did not.
+    //
+    // Deliberately ahead of the shapeGated guard below: a mirror is a claim on
+    // ANOTHER field's value, and it has to be released whether or not this step
+    // also happens to gate its own fields on the shape.
+    //
+    // The index is counted on the list as stored, blank primary included:
+    // ['', archiveMD5] is a bundled DMD whose .vpx MD5 is still missing.
+    mirrorsBefore.forEach(mirror => {
+      if (state.values[mirror.when] === true) return;
+      const raw = state.values[mirror.field];
+      if (!Array.isArray(raw) || raw.length <= mirror.index) return;
+      const list = raw.map(item => String(item ?? '').trim());
+      list.splice(mirror.index, 1);
+      const primary = list[0] || '';
+      const additional = list.slice(1).filter(Boolean);
+      if (additional.length) state.values[mirror.field] = [primary, ...additional];
+      else if (primary) state.values[mirror.field] = primary;
+      else delete state.values[mirror.field];
+    });
+    // A step whose fields change with the shape is describing a DIFFERENT
+    // archive in each one - bundled, it is the VPX's archive; standalone, it is
+    // the asset's own. So everything derived from the old archive goes with the
+    // switch: the loaded folder list, the root chosen inside it, and its
+    // format. Leaving those behind is what left a stale Archive Root and
+    // Archive Type pointing into a file no longer part of the build.
+    //
+    // A step with no shape-gated fields (PUP, Alt Sound) is deliberately left
+    // alone: its archive means the same thing either way, so a Bundled toggle
+    // must not cost the user the folder list they just loaded.
+    if (!shapeGated) return;
+    delete state.values[`__${step.id}ArchiveDirectories`];
+    (step.fields || []).forEach(field => {
+      if (field.directoryPicker) delete state.values[field.yml_field];
+      if (field.archiveFormatField) delete state.values[field.archiveFormatField];
+    });
+  }
+
   function handleBundleChange(fieldName, checked) {
-    state.values[fieldName] = checked;
     const step = WIZARD_STEPS.find(candidate => candidate.bundleField === fieldName);
+    // Read before the shape moves — see liveMirrors.
+    const mirrorsBefore = liveMirrors(step);
+    state.values[fieldName] = checked;
     // Bundled and Override are mutually exclusive — not native radio inputs
     // (either can be independently unchecked, leaving both off), but turning
     // one on always turns the other off.
     if (checked && step?.overrideField) state.values[step.overrideField] = false;
+    clearShapeDisabledFields(step, mirrorsBefore);
     if (!checked && step && !state.selections[step.category] && state.values[step.overrideField] !== true) {
       clearStepData(step, { preserveId: false, preserveBundle: false, preserveOverride: true, rerender: false });
       const config = Object.values(CATEGORY_CONFIG).find(candidate => candidate.bundleField === fieldName);
@@ -457,9 +557,12 @@
   }
 
   function handleOverrideChange(fieldName, checked) {
-    state.values[fieldName] = checked;
     const step = WIZARD_STEPS.find(candidate => candidate.overrideField === fieldName);
+    // Read before the shape moves — see liveMirrors.
+    const mirrorsBefore = liveMirrors(step);
+    state.values[fieldName] = checked;
     if (checked && step?.bundleField) state.values[step.bundleField] = false;
+    clearShapeDisabledFields(step, mirrorsBefore);
     if (!checked && step && !state.selections[step.category] && state.values[step.bundleField] !== true) {
       clearStepData(step, { preserveId: false, preserveBundle: true, preserveOverride: false, rerender: false });
       const config = Object.values(CATEGORY_CONFIG).find(candidate => candidate.overrideField === fieldName);
@@ -491,6 +594,10 @@
 
   function isStepEnabled(step) {
     if (step.always) return true;
+    // A step may demand one value before it is worth opening at all. The DMD
+    // tab uses this: Bundled or Override says a DMD exists, but the tab cannot
+    // be filled in until its type has been picked on the asset row.
+    if (step.requiresValue && !String(state.values[step.requiresValue] ?? '').trim()) return false;
     if (step.category && state.selections[step.category]) return true;
     if (step.bundleField && state.values[step.bundleField] === true) return true;
     if (step.overrideField && state.values[step.overrideField] === true) return true;
@@ -537,6 +644,16 @@
     const preserveOverride = options.preserveOverride === true;
 
     const checksumSources = { ...(state.values.__checksumSources || {}) };
+    // Drop hints and in-flight jobs are keyed by control id and live outside
+    // `state` (uiHelper holds them so they survive the rebuild a tab switch
+    // causes), so wiping values alone leaves stale text on screen and lets a
+    // running hash write into the tab that was just cleared.
+    const checksumFieldIds = [];
+    step.fields.forEach(field => {
+      checksumFieldIds.push(`field-${field.yml_field}`);
+      if (Array.isArray(field.items)) field.items.forEach(item => checksumFieldIds.push(`field-${item.yml_field}`));
+    });
+    window.VPS_UI?.resetChecksumStatuses?.(checksumFieldIds);
     step.fields.forEach(field => {
       if (field.readonly && preserveId) return;
       delete state.values[field.yml_field];
@@ -551,7 +668,16 @@
     });
     if (Object.keys(checksumSources).length) state.values.__checksumSources = checksumSources;
     else delete state.values.__checksumSources;
-    if (step.id === 'pup') delete state.values.__pupArchiveDirectories;
+    // Any tab that browses an archive drops its loaded directory list on
+    // Clear. This used to name PUP explicitly, which left Alt Sound's list
+    // (and later the DMD one) behind after a section was cleared.
+    delete state.values[`__${step.id}ArchiveDirectories`];
+    // Slots 2 and 3 collapse back out of sight, and the overflow list goes
+    // with them - neither is reachable through step.fields alone.
+    if (step.id === 'vpx') {
+      delete state.values.__vpxMagicSlots;
+      delete state.values.vpxMagicAdditional;
+    }
     if (!preserveBundle && step.bundleField) delete state.values[step.bundleField];
     if (!preserveOverride && step.overrideField) delete state.values[step.overrideField];
 
@@ -567,10 +693,29 @@
     });
   }
 
+  // The inputs every rule reads. Built fresh on each call, because selectRecord
+  // and startNext replace state.values and state.selections outright.
+  function validationContext() {
+    return {
+      record: state.record,
+      selections: state.selections,
+      values: state.values,
+      yaml: state.yaml,
+      isStepEnabled
+    };
+  }
+
+  // The feature and v090 issues, read live from the rulebook on every call -
+  // the two validators were queried the same way before the merge, which is
+  // what lets the Additional ROM dialog change a tab's count without a field
+  // change here.
+  function extendedIssues() {
+    return window.VPS_VALIDATION.collectAllErrors(validationContext())
+      .filter(entry => entry.system === 'feature' || entry.system === 'v090');
+  }
+
   function getExtendedStepErrors(stepId) {
-    const featureErrors = window.VPS_FEATURE_VALIDATION?.errors?.() || [];
-    const v090Errors = window.VPS_V090_VALIDATION?.errors?.() || [];
-    return [...featureErrors, ...v090Errors].filter(entry => entry.stepId === stepId);
+    return extendedIssues().filter(entry => entry.stepId === stepId);
   }
 
   function getSectionStatus(step) {
@@ -594,193 +739,30 @@
     return { label: count ? `${count} value${count === 1 ? '' : 's'}` : 'Ready', className: 'ready' };
   }
 
-  function validateBuild() {
-    const errors = [];
-    const warnings = [];
-    const addError = (stepId, title, message) => errors.push(issue('error', stepId, title, message));
-    const addWarning = (stepId, title, message) => warnings.push(issue('warning', stepId, title, message));
-    const hasText = value => typeof value === 'string' ? value.trim() !== '' : value !== undefined && value !== null;
-
-    if (!state.record) addError('main', 'No table selected', 'Search for and load a VPS table first.');
-    if (!state.values.tableVPSId) addError('main', 'Missing table VPS ID', 'The selected table does not have a usable VPS ID.');
-    if (!state.selections.tableFiles || !state.values.vpxVPSId) {
-      addError('vpx', 'VPX file required', 'Select a VPX file before copying or downloading the configuration.');
-    }
-
-    const fpsRaw = state.values.fps;
-    if (fpsRaw === '' || fpsRaw === undefined || fpsRaw === null) {
-      addError('main', 'FPS is required', 'Enter the table frame rate as an integer.');
-    } else if (!/^\d+$/.test(String(fpsRaw)) || !Number.isInteger(Number(fpsRaw))) {
-      addError('main', 'FPS must be an integer', 'Use numbers only for FPS.');
-    }
-
-    const testers = normalizeArray(state.values.testers);
-    if (!testers.length) {
-      addError('main', 'Testers are required', 'Enter at least one tester; separate multiple names with commas.');
-    }
-
-    Object.entries(CATEGORY_CONFIG).forEach(([category, config]) => {
-      const selectedId = state.selections[category];
-      const items = getCategoryItems(state.record, category, config, { selections: state.selections });
-      const item = items.find(candidate => String(candidate.id || '') === String(selectedId || ''));
-
-      if (config.bundleField && selectedId && state.values[config.bundleField] === true) {
-        addWarning(config.stepId, `${config.label} selected and bundled`, 'Choose either a separate VPS entry or bundled status unless both are intentionally required.');
-      }
-      if (selectedId && !item) {
-        addError(config.stepId, `${config.label} ID is unavailable`, 'Choose an available VPS entry before copying or downloading.');
-      } else if (item && isItemBroken(item)) {
-        addError(config.stepId, `${config.label} entry is broken`, 'Choose another database entry before copying or downloading.');
-      }
-    });
-
-    const validateChecksum = (key, stepId, label, options = {}) => {
-      const rawValue = options.value !== undefined ? options.value : state.values[key];
-      const hashes = normalizeChecksumValue(rawValue);
-      if (options.required && !hashes.length) {
-        addError(stepId, `${label} is required`, `Add a valid MD5 value for ${label}.`);
-        return;
-      }
-      if (!hashes.length) return;
-      if (Array.isArray(rawValue) && hashes.length < 2) {
-        addError(stepId, `${label} list is invalid`, 'Use a plain string for one checksum or a list containing at least two checksums.');
-      }
-      hashes.forEach(hash => {
-        if (!isMd5Hash(hash)) {
-          addError(stepId, `${label} is not a valid MD5`, 'Each checksum must contain exactly 32 hexadecimal characters.');
-        }
-      });
+  // The build issues (the Validate dialog's own lines, the tab counts and the
+  // blocking), from the merged rulebook (validationRules.js).
+  function refreshValidation() {
+    const build = window.VPS_VALIDATION.collectAllErrors(validationContext())
+      .filter(entry => entry.system === 'build');
+    state.validation = {
+      errors: build.filter(entry => entry.type === 'error'),
+      warnings: build.filter(entry => entry.type === 'warning')
     };
-
-    validateChecksum('vpxChecksum', 'vpx', 'VPX Checksum', { required: true });
-
-    const backglassOffered = Boolean(
-      state.selections.b2sFiles || hasText(state.values.backglassUrlOverride) || state.values.backglassBundled === true
-    );
-    validateChecksum('backglassChecksum', 'b2s', 'Backglass Checksum', { required: backglassOffered });
-    if (hasText(state.values.backglassUrlOverride) && !hasText(state.values.backglassNotes)) {
-      addError('b2s', 'Backglass Notes are required', 'Add Backglass Notes when using Backglass URL Override.');
-    }
-    // Bundled means the Backglass ships inside the table's own download, so
-    // no external URL/Authors/Image Override is needed — only Notes saying
-    // where to find it. Override (no VPS entry at all) still requires the
-    // full Advanced Config set via the generic overrideRequiredFields loop.
-    if (state.values.backglassBundled === true && !hasText(state.values.backglassNotes)) {
-      addError('b2s', 'Bundled Backglass needs notes', 'Describe the bundled Backglass and where it is located.');
-    }
-
-    const romOffered = Boolean(
-      state.selections.romFiles || hasText(state.values.romUrlOverride) || state.values.romBundled === true
-    );
-    validateChecksum('romChecksum', 'rom', 'ROM Checksum', { required: romOffered });
-    if (hasText(state.values.romUrlOverride) && state.values.romVPSId) {
-      addError('rom', 'ROM ID conflicts with URL override', 'Use either ROM ID or ROM URL Override, not both.');
-    }
-    if (hasText(state.values.romUrlOverride) && !hasText(state.values.romVersionOverride)) {
-      addError('rom', 'ROM version override is required', 'Add ROM Version Override when using ROM URL Override.');
-    }
-    if (hasText(state.values.romUrlOverride) && !hasText(state.values.romNotes)) {
-      addError('rom', 'ROM Notes are required', 'Add ROM Notes when using ROM URL Override.');
-    }
-    // Bundled means the ROM ships inside the table's own download — no
-    // external URL/Version Override needed, only Notes. Override (no VPS
-    // entry) still requires the full set via overrideRequiredFields below.
-    if (state.values.romBundled === true && !hasText(state.values.romNotes)) {
-      addError('rom', 'Bundled ROM needs notes', 'Describe the bundled ROM and where it is located.');
-    }
-
-    const colorOffered = Boolean(
-      state.selections.altColorFiles || hasText(state.values.coloredROMUrlOverride) || state.values.coloredROMBundled === true
-    );
-    const colorRawValue = state.values.coloredROMChecksum;
-    const colorPrimary = String(Array.isArray(colorRawValue) ? (colorRawValue[0] ?? '') : (colorRawValue ?? '')).trim();
-    const colorSecondary = String(state.values.coloredROMChecksumSecondary || '').trim();
-    // Outside PAL/VNI mode, coloredROMChecksum may hold additional checksums
-    // added via the checksum-additional modal — pass it through as-is
-    // (string or array) instead of collapsing to just the primary value.
-    const colorValue = state.values.coloredROMPin2DMD === true
-      ? [colorPrimary, colorSecondary].filter(Boolean)
-      : colorRawValue;
-    validateChecksum('coloredROMChecksum', 'coloredRom', 'Color ROM Checksum', {
-      required: colorOffered,
-      value: colorValue
-    });
-    if (state.values.coloredROMPin2DMD === true && (!colorPrimary || !colorSecondary)) {
-      addError('coloredRom', 'PAL/VNI requires two checksums', 'Add the .pal checksum and the .vni checksum.');
-    }
-    if (hasText(state.values.coloredROMUrlOverride) && !hasText(state.values.coloredROMNotes)) {
-      addError('coloredRom', 'Color ROM Notes are required', 'Add Color ROM Notes when using Color ROM URL Override.');
-    }
-    // Bundled means the Color ROM ships inside the table's own download —
-    // no external URL/Version Override needed, only Notes. Override (no
-    // VPS entry) still requires the full set via overrideRequiredFields.
-    if (state.values.coloredROMBundled === true && !hasText(state.values.coloredROMNotes)) {
-      addError('coloredRom', 'Bundled Color ROM needs notes', 'Describe the bundled Color ROM and where it is located.');
-    }
-
-    const pupOffered = Boolean(
-      state.selections.pupPackFiles || hasText(state.values.pupFileUrl) || state.values.pupBundled === true || state.values.pupOverride === true
-    );
-    validateChecksum('pupChecksum', 'pup', 'PUP Pack Checksum', { required: pupOffered });
-    if (state.values.pupBundled === true && !hasText(state.values.pupNotes)) {
-      addError('pup', 'Bundled PUP Pack needs notes', 'Describe the bundled PUP Pack and where it is located.');
-    }
-    if (isStepEnabled(WIZARD_STEPS.find(step => step.id === 'pup'))) {
-      [
-        ['pupVersion', 'PUP Pack Version'],
-        ['pupArchiveRoot', 'PUP Pack Archive Root'],
-        ['pupArchiveFormat', 'PUP Pack Archive Format']
-      ].forEach(([key, label]) => {
-        if (!hasText(state.values[key])) {
-          addError('pup', `${label} is required`, `Add ${label} before copying or downloading.`);
-        }
-      });
-    }
-
-    validateChecksum('diffChecksum', 'vpuPatch', 'VPU Patch Checksum');
-    if (hasText(state.values.diffUrlOverride) && !hasText(state.values.diffNotes)) {
-      addError('vpuPatch', 'Patch Notes are required', 'Add Patch Notes when using Patch URL Override.');
-    }
-    // Bundled means the VPU Patch ships inside the table's own download —
-    // no external URL/Authors/Version Override needed, only Notes. Override
-    // (no VPS entry) still requires the full set via overrideRequiredFields.
-    if (state.values.diffBundled === true && !hasText(state.values.diffNotes)) {
-      addError('vpuPatch', 'Bundled VPU Patch needs notes', 'Describe the bundled VPU Patch and where it is located.');
-    }
-
-    // Override unlocks a tab without a VPS ID; in exchange every field that
-    // would otherwise have come from the VPS DB (each step's declared
-    // overrideRequiredFields — its Advanced Config overrides, plus PUP
-    // Notes) must be filled in by hand.
-    WIZARD_STEPS.forEach(step => {
-      if (!step.overrideField || state.values[step.overrideField] !== true) return;
-      (step.overrideRequiredFields || []).forEach(key => {
-        if (hasText(state.values[key])) return;
-        const label = step.fields.find(field => field.yml_field === key)?.name || key;
-        addError(step.id, `${label} is required`, `Add ${label} — Override requires every Advanced Config field since there is no VPS entry to pull it from.`);
-      });
-    });
-
-    const yamlLines = state.yaml.split('\n');
-    const longLine = yamlLines.find((line, index) => {
-      if (line.length <= 120) return false;
-      const previous = yamlLines[index - 1] || '';
-      return previous.trim() !== '# yamllint disable-line rule:line-length';
-    });
-    if (longLine) {
-      addError('main', 'YAML line exceeds 120 characters', 'Shorten the value or use a supported URL field so the generated file passes yamllint.');
-    }
-
-    state.validation = { errors, warnings };
     return state.validation;
   }
 
-  function issue(type, stepId, title, message) {
-    return { type, stepId, title, message };
-  }
+  // The inputs every rule reads, for the scripts that draw from the rulebook
+  // outside this file (the field dots, the jump to the first error).
+  window.VPS_MAIN = Object.freeze({ validationContext });
 
   function updateValidationSummary() {
-    validateBuild();
+    refreshValidation();
+  }
+
+  // Anything that blocks Copy and Download. The feature and v090 issues used to
+  // block by intercepting those clicks before this file saw them.
+  function hasBlockingIssues() {
+    return state.validation.errors.length > 0 || extendedIssues().length > 0;
   }
 
   function refreshTabStatuses() {
@@ -789,19 +771,11 @@
       if (!step) return;
       const status = getSectionStatus(step);
       tab.classList.remove('has-error', 'has-warning', 'has-ready');
-      let marker = tab.querySelector('.config-tab-alert');
       if (status.className === 'error' || status.className === 'warning') {
         tab.classList.add(`has-${status.className}`);
         tab.title = status.label;
-        if (!marker) {
-          marker = document.createElement('span');
-          marker.className = 'config-tab-alert';
-          marker.setAttribute('aria-hidden', 'true');
-          tab.appendChild(marker);
-        }
         tab.setAttribute('aria-label', `${step.label}: ${status.label}`);
       } else {
-        marker?.remove();
         tab.removeAttribute('title');
         tab.setAttribute('aria-label', step.label);
         if (status.className === 'ready') tab.classList.add('has-ready');
@@ -809,8 +783,19 @@
     });
   }
 
+  function validationItem(entry, className) {
+    const item = document.createElement('li');
+    item.className = className;
+    const title = document.createElement('strong');
+    title.textContent = entry.title;
+    const message = document.createElement('span');
+    message.textContent = entry.message;
+    item.append(title, message);
+    return item;
+  }
+
   function showValidationDialog() {
-    validateBuild();
+    refreshValidation();
     dom.validationBody.innerHTML = '';
     const all = [...state.validation.errors, ...state.validation.warnings];
     const list = document.createElement('ul');
@@ -821,17 +806,33 @@
       item.innerHTML = '<strong>Everything looks good.</strong><span>The build is ready to copy or download.</span>';
       list.appendChild(item);
     } else {
-      all.forEach(entry => {
-        const item = document.createElement('li');
-        item.className = `validation-item ${entry.type}`;
-        const title = document.createElement('strong');
-        title.textContent = entry.title;
-        const message = document.createElement('span');
-        message.textContent = entry.message;
-        item.append(title, message);
-        list.appendChild(item);
-      });
+      all.forEach(entry => list.appendChild(validationItem(entry, `validation-item ${entry.type}`)));
     }
+
+    // The v090 and then the feature issues follow, each skipped when its title
+    // and message are both already listed. Until 2026-10-05 the two validators
+    // appended these themselves a moment after the dialog opened: v090 checks
+    // against the build issues' lines alone, so two identical v090 lines both
+    // show, while the feature validator also skips lines it has just added.
+    // Until 2026-10-11 the skip compared titles alone, so an Additional ROM
+    // entry with two problems listed only the first while its tab counted two.
+    const extended = extendedIssues();
+    const lineKey = (title, message) => `${title}\n${message}`;
+    const appendExtended = (entries, className, rememberOwnLines) => {
+      if (!entries.length) return;
+      list.querySelector('.validation-item.success')?.remove();
+      const listed = new Set([...list.querySelectorAll('.validation-item')]
+        .map(item => lineKey(item.querySelector('strong')?.textContent, item.querySelector('span')?.textContent)));
+      entries.forEach(entry => {
+        const key = lineKey(entry.title, entry.message);
+        if (listed.has(key)) return;
+        if (rememberOwnLines) listed.add(key);
+        list.appendChild(validationItem(entry, `validation-item error ${className}`));
+      });
+    };
+    appendExtended(extended.filter(entry => entry.system === 'v090'), 'v090-validation-item', false);
+    appendExtended(extended.filter(entry => entry.system === 'feature'), 'feature-validation-item', true);
+
     dom.validationBody.appendChild(list);
     renderAccordions();
     openDialog(dom.validationDialog);
@@ -861,8 +862,8 @@
   }
 
   async function copyYaml(button) {
-    validateBuild();
-    if (state.validation.errors.length) {
+    refreshValidation();
+    if (hasBlockingIssues()) {
       showValidationDialog();
       return;
     }
@@ -886,8 +887,8 @@
   }
 
   function downloadYaml() {
-    validateBuild();
-    if (state.validation.errors.length) {
+    refreshValidation();
+    if (hasBlockingIssues()) {
       showValidationDialog();
       return;
     }
@@ -904,6 +905,9 @@
     state.record = null;
     state.selections = {};
     state.values = {};
+    // Same reason as in clearStepData, for every field at once. This also
+    // invalidates any hash or directory scan still running anywhere.
+    window.VPS_UI?.resetChecksumStatuses?.();
     // Clear is an explicit full reset — unlike a plain Download (which
     // intentionally leaves carryValues in place so the next similar table
     // keeps FPS/Testers/etc.), it must not let those carry into whatever
