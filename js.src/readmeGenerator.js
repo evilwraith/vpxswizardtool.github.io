@@ -5,9 +5,16 @@
   if (!UI) return;
 
   const TEMPLATE_URLS = {
-    manual: 'https://raw.githubusercontent.com/TheOminousOsie/VPXS_4KP_Readme_Gen/main/Content/man_README.md',
-    wizard: 'https://raw.githubusercontent.com/TheOminousOsie/VPXS_4KP_Readme_Gen/main/Content/wiz_README.md'
+    manual: 'https://raw.githubusercontent.com/TheOminousOsie/VPXS_4KP_Readme_Gen/main/Content/man_README.md'
   };
+
+  // The wizard README is a fixed pointer to the catalog; <table> is written
+  // out literally, not filled in.
+  const WIZARD_README = [
+    'This table is in the Table Manager Wizard. ',
+    'To view its details visit https://vpxtablemanager.com/catalog/#table=vpx-<table>',
+    ''
+  ].join('\n');
 
   const FILE_ARRAYS = ['tableFiles', 'b2sFiles', 'romFiles', 'pupPackFiles', 'altColorFiles'];
   const snapshot = { record: null, selections: null, values: null };
@@ -161,12 +168,10 @@
     };
   }
 
-  function commonReplacements(record, values, mode) {
+  function commonReplacements(record, values) {
     const table = tableDisplayName(record, values);
     const testers = normalizeArray(values.testers);
-    const testerText = mode === 'wizard'
-      ? testers.map(name => `  - ${name === 'OminousOsie' ? 'Ominous Osie 🌸' : name}`).join('\n')
-      : testers.map(name => name === 'OminousOsie' ? 'Ominous Osie 🌸' : name).join(', ');
+    const testerText = testers.map(name => name === 'OminousOsie' ? 'Ominous Osie 🌸' : name).join(', ');
 
     return {
       name: table.name,
@@ -198,12 +203,8 @@
     return template;
   }
 
-  function buildWizardReadme(template, record, values) {
-    return replaceTokens(template, commonReplacements(record, values, 'wizard'));
-  }
-
   function buildManualReadme(template, record, values) {
-    let readme = replaceTokens(template, commonReplacements(record, values, 'manual'));
+    let readme = replaceTokens(template, commonReplacements(record, values));
 
     readme = applyFileMetadata(readme, 'table', fileMetadata(record, values.vpxVPSId));
 
@@ -402,15 +403,19 @@
     showToast('loading', `Generating ${label}`, 'Preparing table details, links, and preview artwork.');
 
     try {
+      const filename = `${sanitizeId(values.vpxVPSId)}_README.md`;
+      if (mode === 'wizard') {
+        downloadTextFile(WIZARD_README, filename);
+        showToast('success', `${label} downloaded`, `${filename} was sent to your Downloads folder.`);
+        return;
+      }
+
       const template = await fetchTemplate(mode);
       const image = previewImage(record, values);
-      let readme = mode === 'manual'
-        ? buildManualReadme(template, record, values)
-        : buildWizardReadme(template, record, values);
+      let readme = buildManualReadme(template, record, values);
 
       if (image.name) readme = replaceToken(readme, 'previewImageName', image.name);
 
-      const filename = `${sanitizeId(values.vpxVPSId)}_README.md`;
       downloadTextFile(readme, filename);
 
       if (image.url && image.name) {

@@ -73,12 +73,20 @@
     // disabled in the dialog (see open()) and not required here. The other
     // vpsId checks below are already gated on entry.vpsId being truthy, so
     // they naturally no-op once it's left empty.
+    //
+    // Each entry has one source, like the primary ROM: a VPS ID, a URL
+    // Override, or bundled inside the table download. Version Override is
+    // optional beside a VPS ID and required beside a URL.
     const overrideActive = runtime.state.values?.romOverride === true;
-    if (!overrideActive && !entry.vpsId) add('vpsId', 'Select a ROM VPS ID.');
-    if (!entry.checksum) add('checksum', 'Checksum is required.');
-    else if (!isMd5Hash(entry.checksum)) add('checksum', 'Checksum must contain exactly 32 hexadecimal characters.');
+    const bundled = entry.bundled === true;
+    if (!overrideActive && !entry.vpsId && !entry.urlOverride && !bundled) add('vpsId', 'Select a ROM VPS ID.');
+    if (entry.vpsId && entry.urlOverride) add('urlOverride', 'Use either a VPS ID or a URL Override, not both.');
+    if (bundled && (entry.vpsId || entry.urlOverride)) add('bundled', 'A bundled ROM ships in the table download: clear its VPS ID and URL Override.');
+    const checksums = utils.normalizeEntryChecksum ? [].concat(utils.normalizeEntryChecksum(entry.checksum)).filter(Boolean) : [entry.checksum].filter(Boolean);
+    if (!checksums.length) add('checksum', 'Checksum is required.');
+    else if (checksums.some(checksum => !isMd5Hash(checksum))) add('checksum', 'Checksum must contain exactly 32 hexadecimal characters.');
     if (entry.urlOverride && !entry.versionOverride) add('versionOverride', 'Version Override is required when URL Override is used.');
-    if (entry.versionOverride && !entry.urlOverride) add('urlOverride', 'URL Override is required when Version Override is used.');
+    if (bundled && !entry.notes) add('notes', 'Notes are required for a bundled ROM: say where it is in the download.');
 
     const primary = String(runtime.state.selections?.romFiles || runtime.state.values?.romVPSId || '');
     if (entry.vpsId && entry.vpsId === primary) add('vpsId', 'The primary ROM cannot also be an Additional ROM.');
@@ -99,7 +107,9 @@
     vpsId: 'additionalRomVpsId',
     checksum: 'additionalRomChecksum',
     versionOverride: 'additionalRomVersionOverride',
-    urlOverride: 'additionalRomUrlOverride'
+    urlOverride: 'additionalRomUrlOverride',
+    bundled: 'additionalRomBundled',
+    notes: 'additionalRomNotes'
   };
 
   function clearFieldErrorPresentation(node) {
@@ -190,9 +200,11 @@
           <div class="field field-wide"><label for="additionalRomVpsId"><span>VPS ID</span></label><select id="additionalRomVpsId"></select></div>
           <div class="field field-wide checksum-drop-field" id="additionalRomChecksumField">
             <label for="additionalRomChecksum"><span>Checksum</span></label>
-            <input id="additionalRomChecksum" type="text" maxlength="32" placeholder="ROM Checksum" autocomplete="off">
+            <input id="additionalRomChecksum" type="text" placeholder="ROM Checksum — separate several with commas" autocomplete="off">
             <span class="checksum-drop-status"><span class="checksum-drop-hint">Drop .zip / .rar / .7z file to calculate MD5</span></span>
           </div>
+          <div class="field"><span class="checkbox-row"><input id="additionalRomBundled" type="checkbox"><label for="additionalRomBundled">Bundled</label></span></div>
+          <div class="field field-wide"><label for="additionalRomNotes"><span>Notes</span></label><textarea id="additionalRomNotes" rows="2" placeholder="Notes — required when bundled"></textarea></div>
         </div>
         <details class="advanced-fields compact-advanced additional-rom-advanced" open>
           <summary><span class="advanced-chevron">›</span><span class="advanced-label">Advanced Config</span></summary>
@@ -221,6 +233,7 @@
       checksumInput.value = upper;
       try { checksumInput.setSelectionRange(selectionStart, selectionEnd); } catch (_) { /* no-op */ }
     });
+    node.querySelector('#additionalRomBundled').addEventListener('change', () => syncSourceControls(node));
     node.addEventListener('input', revalidate);
     node.addEventListener('change', revalidate);
     bindDrop(node);
@@ -335,10 +348,13 @@
       items.forEach(item => select.add(new Option(getItemLabel(item), String(item?.id || ''))));
     }
     select.value = String(current.vpsId || '');
-    select.disabled = overrideActive;
-    node.querySelector('#additionalRomChecksum').value = String(current.checksum || '');
+    const checksum = Array.isArray(current.checksum) ? current.checksum.join(', ') : current.checksum;
+    node.querySelector('#additionalRomChecksum').value = String(checksum || '');
     node.querySelector('#additionalRomVersionOverride').value = String(current.versionOverride || '');
     node.querySelector('#additionalRomUrlOverride').value = String(current.urlOverride || '');
+    node.querySelector('#additionalRomBundled').checked = current.bundled === true;
+    node.querySelector('#additionalRomNotes').value = String(current.notes || '');
+    syncSourceControls(node);
     // The dialog is created once and cached, so this cannot live in the markup:
     // the accepted list depends on the currently loaded table's manufacturer.
     // Reopening the modal abandons any drop still running from last time, so
@@ -370,13 +386,30 @@
     runtime.schedule();
   }
 
+  // Bundled is a source of its own, so it locks the other two. The VPS ID
+  // picker is also locked under ROM Override, which has no entries to offer.
+  function syncSourceControls(node) {
+    const bundled = node.querySelector('#additionalRomBundled').checked;
+    const select = node.querySelector('#additionalRomVpsId');
+    const url = node.querySelector('#additionalRomUrlOverride');
+    if (bundled) {
+      select.value = '';
+      url.value = '';
+    }
+    select.disabled = bundled || runtime.state.values?.romOverride === true;
+    url.disabled = bundled;
+  }
+
   function readEntry(node) {
-    return {
+    const entry = {
       vpsId: node.querySelector('#additionalRomVpsId').value.trim(),
       checksum: node.querySelector('#additionalRomChecksum').value.trim(),
       versionOverride: node.querySelector('#additionalRomVersionOverride').value.trim(),
-      urlOverride: node.querySelector('#additionalRomUrlOverride').value.trim()
+      urlOverride: node.querySelector('#additionalRomUrlOverride').value.trim(),
+      notes: node.querySelector('#additionalRomNotes').value.trim()
     };
+    if (node.querySelector('#additionalRomBundled').checked) entry.bundled = true;
+    return entry;
   }
 
   function revalidate() {
@@ -392,7 +425,7 @@
     if (detailedErrors.length) {
       liveDots = true;
       presentFieldErrors(node, detailedErrors);
-      const firstInvalid = ['vpsId', 'checksum', 'versionOverride', 'urlOverride']
+      const firstInvalid = ['vpsId', 'checksum', 'bundled', 'notes', 'versionOverride', 'urlOverride']
         .find(name => detailedErrors.some(error => error.field === name));
       if (firstInvalid) node.querySelector(`#${FIELD_CONTROL_IDS[firstInvalid]}`)?.focus();
       return;
@@ -407,7 +440,8 @@
     runtime.schedule();
   }
 
-  const MAX_ADDITIONAL_ROMS = 1;
+  // The spec allows any number; the cap only keeps the header row on one line.
+  const MAX_ADDITIONAL_ROMS = 4;
 
   function romIndicatorSvg() {
     return '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1.5"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/></svg>';
@@ -439,29 +473,31 @@
     const current = entries();
     add.hidden = current.length >= MAX_ADDITIONAL_ROMS;
 
-    let indicator = summary.querySelector('.additional-rom-indicator');
-    if (!current.length) {
-      indicator?.remove();
-      return;
-    }
-
-    if (!indicator) {
-      indicator = document.createElement('button');
-      indicator.type = 'button';
-      indicator.className = 'additional-rom-indicator';
-      indicator.innerHTML = romIndicatorSvg();
-      indicator.addEventListener('click', event => {
-        event.preventDefault();
-        event.stopPropagation();
-        open(0);
-      });
-      summary.insertBefore(indicator, add);
-    }
-    const entry = current[0];
-    const label = entry.vpsId || 'Additional ROM';
-    const detail = entry.checksum || 'Checksum missing';
-    indicator.dataset.tooltip = `${label} · ${detail}`;
-    indicator.setAttribute('aria-label', `Additional ROM: ${label}. Activate to edit.`);
+    // One indicator per entry, in order. Extras left over from a longer list
+    // are removed; the ones that remain are relabelled in place, so the first
+    // keeps any error dot the validator has already drawn on it.
+    const indicators = [...summary.querySelectorAll('.additional-rom-indicator')];
+    indicators.slice(current.length).forEach(indicator => indicator.remove());
+    current.forEach((entry, index) => {
+      let indicator = indicators[index];
+      if (!indicator) {
+        indicator = document.createElement('button');
+        indicator.type = 'button';
+        indicator.className = 'additional-rom-indicator';
+        indicator.innerHTML = romIndicatorSvg();
+        indicator.addEventListener('click', event => {
+          event.preventDefault();
+          event.stopPropagation();
+          open(Number(indicator.dataset.entryIndex));
+        });
+        summary.insertBefore(indicator, add);
+      }
+      indicator.dataset.entryIndex = String(index);
+      const label = entry.vpsId || (entry.bundled ? 'Bundled ROM' : entry.versionOverride || 'Additional ROM');
+      const checksum = Array.isArray(entry.checksum) ? entry.checksum.join(', ') : entry.checksum;
+      indicator.dataset.tooltip = `${label} · ${checksum || 'Checksum missing'}`;
+      indicator.setAttribute('aria-label', `Additional ROM ${index + 1}: ${label}. Activate to edit.`);
+    });
   }
 
   const api = Object.freeze({ entries, validateEntry, open, render });

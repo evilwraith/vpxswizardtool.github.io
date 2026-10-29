@@ -553,5 +553,103 @@ if (!PRINT) {
     JSON.stringify(tip));
 }
 
+// --- Archive & Install -----------------------------------------------------
+//
+// table.yml.example's table-archive mode without a DMD: vpxArchiveFormat,
+// vpxExtractExtra, postInstallRename and applyFixes, all on the VPX tab.
+
+const ARCHIVE_YAML = [
+  '---',
+  'applyFixes:',
+  '  - "bass"',
+  'fps: 60',
+  'postInstallRename:',
+  '  - source: "Music/a.mp3"',
+  '    destination: "Music/b.mp3"',
+  'tableVPSId: "Lgi1JLk0Vf"',
+  'testers:',
+  '  - "Tester"',
+  'vpxArchiveFormat: "zip"',
+  'vpxChecksum:',
+  '  - "' + MD5_VPX + '"',
+  '  - "' + MD5_B2S + '"',
+  'vpxExtractExtra:',
+  '  - "Music"',
+  'vpxVPSId: "qV3Z3oQ8md"',
+  ''
+];
+const ARCHIVE_KEYS = ['applyFixes', 'fps', 'postInstallRename', 'source', 'destination', 'tableVPSId', 'testers',
+  'vpxArchiveFormat', 'vpxChecksum', 'vpxExtractExtra', 'vpxVPSId'];
+const ARCHIVE_CLEAN = {
+  yaml: ARCHIVE_YAML,
+  keys: ARCHIVE_KEYS,
+  dialog: [
+    'success: Everything looks good. | The build is ready to copy or download.'
+  ],
+  tabs: ['main: ready', 'vpx: ready', 'b2s: disabled', 'rom: disabled', 'coloredRom: disabled', 'pup: disabled', 'altSound: disabled', 'vpuPatch: disabled', 'dmd: disabled'],
+  dots: [],
+  download: 'Lgi1JLk0Vf_table-config.yml',
+  downloadMatchesPreview: true
+};
+
+await scenario('clean table archive build', [...BASE,
+  ['fill', 'vpxArchiveFormat', 'zip'],
+  ['additional', 'vpxChecksum', [MD5_B2S]],
+  ['fill', 'vpxExtractExtra', 'Music'],
+  ['fill', 'postInstallRename', 'Music/a.mp3 -> Music/b.mp3'],
+  ['fill', 'bass', true]
+], ARCHIVE_CLEAN);
+await scenario('table archive imported and written back unchanged', [['import', ARCHIVE_YAML.join('\n')]], ARCHIVE_CLEAN);
+await scenario('table archive with one checksum', [...BASE, ['fill', 'vpxArchiveFormat', 'zip']], {
+  rule: 'Table archive needs both checksums',
+  keys: ['fps', 'tableVPSId', 'testers', 'vpxArchiveFormat', 'vpxChecksum', 'vpxVPSId'],
+  dialog: [
+    'error: Table archive needs both checksums | Drop the table archive on VPX Checksum: the list must carry the archive MD5 alongside the .vpx MD5.'
+  ],
+  tabs: ['main: ready', 'vpx: 1 error', 'b2s: disabled', 'rom: disabled', 'coloredRom: disabled', 'pup: disabled', 'altSound: disabled', 'vpuPatch: disabled', 'dmd: disabled'],
+  dots: [
+    'vpx field-vpxChecksum: Table archive needs both checksums. Drop the table archive on VPX Checksum: the list must carry the archive MD5 alongside the .vpx MD5.'
+  ],
+  download: 'blocked'
+});
+await scenario('extract folders without an archive format', [...BASE, ['fill', 'vpxExtractExtra', 'Music']], {
+  rule: 'Archive Format required',
+  keys: ['fps', 'tableVPSId', 'testers', 'vpxChecksum', 'vpxExtractExtra', 'vpxVPSId'],
+  dialog: [
+    'error: Archive Format required | Choose the table archive format: Extract Folders are unpacked from it.'
+  ],
+  tabs: ['main: ready', 'vpx: 1 error', 'b2s: disabled', 'rom: disabled', 'coloredRom: disabled', 'pup: disabled', 'altSound: disabled', 'vpuPatch: disabled', 'dmd: disabled'],
+  dots: [
+    'vpx field-vpxArchiveFormat: Archive Format required. Choose the table archive format: Extract Folders are unpacked from it.'
+  ],
+  download: 'blocked'
+});
+await scenario('post-install rename without an arrow', [...BASE, ['fill', 'postInstallRename', 'Music']], {
+  rule: 'Post-Install Rename invalid',
+  keys: ['fps', 'tableVPSId', 'testers', 'vpxChecksum', 'vpxVPSId'],
+  dialog: [
+    'error: Post-Install Rename invalid | Line 1 must read "source -> destination".'
+  ],
+  tabs: ['main: ready', 'vpx: 1 error', 'b2s: disabled', 'rom: disabled', 'coloredRom: disabled', 'pup: disabled', 'altSound: disabled', 'vpuPatch: disabled', 'dmd: disabled'],
+  dots: [
+    'vpx field-postInstallRename: Post-Install Rename invalid. Line 1 must read "source -> destination".'
+  ],
+  download: 'blocked'
+});
+// What a folder picked from the archive browser looks like before its
+// destination is edited.
+await scenario('post-install rename to itself', [...BASE, ['fill', 'postInstallRename', 'Music -> Music']], {
+  rule: 'Post-Install Rename invalid',
+  keys: ['fps', 'postInstallRename', 'tableVPSId', 'testers', 'vpxChecksum', 'vpxVPSId'],
+  dialog: [
+    'error: Post-Install Rename invalid | "Music" is renamed to itself. Change its destination.'
+  ],
+  tabs: ['main: ready', 'vpx: 1 error', 'b2s: disabled', 'rom: disabled', 'coloredRom: disabled', 'pup: disabled', 'altSound: disabled', 'vpuPatch: disabled', 'dmd: disabled'],
+  dots: [
+    'vpx field-postInstallRename: Post-Install Rename invalid. "Music" is renamed to itself. Change its destination.'
+  ],
+  download: 'blocked'
+});
+
 await app.close();
 report('yaml-rules-main');

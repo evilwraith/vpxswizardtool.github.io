@@ -103,6 +103,13 @@
             formatField: 'specialDMDArchiveFormat',
             rootField: 'specialDMDArchiveRoot',
             directoriesKey: '__dmdArchiveDirectories'
+          },
+          // Table-archive mode, no DMD: the same [.vpx MD5, archive MD5] pair
+          // and the archive's format, with nothing crossing to another tab.
+          archivePairing: {
+            whenValue: 'vpxArchiveFormat',
+            formatField: 'vpxArchiveFormat',
+            directoriesKey: '__vpxArchiveDirectories'
           }
         },
         { name: 'VPX Notes', yml_field: 'tableNotes', type: 'str', multiline: true, wide: true },
@@ -123,7 +130,37 @@
           // (productionUiExtensions strips these before the generic renderer).
           name: 'Additional Passwords', yml_field: 'vpxMagicAdditional',
           type: 'additional-passwords', advanced: true, customRenderer: true
-        }
+        },
+        // group: 'install' renders in its own "Archive & Install" section
+        // below Advanced Config, whose header "+" belongs to the passwords.
+        //
+        // Archive Format turns on table-archive mode: the wizard installs the
+        // author's archive instead of a bare .vpx, and vpxChecksum must carry
+        // both the archive's MD5 and the .vpx's. A bundled DMD already answers
+        // the format on its own tab, so here it shows that value, locked.
+        {
+          name: 'Archive Format', yml_field: 'vpxArchiveFormat', type: 'select', hideLabel: true, group: 'install',
+          disabledWhen: 'specialDMDBundled',
+          mirrorFrom: { when: 'specialDMDBundled', field: 'specialDMDArchiveFormat' },
+          options: [
+            { label: 'Archive Format — bare .vpx', value: '' },
+            { label: 'ZIP', value: 'zip' },
+            { label: 'RAR', value: 'rar' },
+            { label: '7Z', value: '7z' }
+          ]
+        },
+        {
+          name: 'Extract Folders', yml_field: 'vpxExtractExtra', type: 'array', wide: true, group: 'install',
+          placeholder: 'folders from the archive, e.g. Music', installPicker: 'list'
+        },
+        // Held as plain text in state, one "source -> destination" per line;
+        // prepareData turns it into the postInstallRename object list.
+        {
+          name: 'Post-Install Renames', yml_field: 'postInstallRename', type: 'str', multiline: true, wide: true,
+          group: 'install', placeholder: 'source -> destination, one per line', installPicker: 'rename'
+        },
+        // Written as applyFixes: [bass]. bass is the only fix upstream allows.
+        { name: 'Apply Bass Fix', yml_field: 'bass', type: 'bool', group: 'install' }
       ]
     },
     {
@@ -328,6 +365,7 @@
     '__pupArchiveDirectories',
     '__altSoundArchiveDirectories',
     '__dmdArchiveDirectories',
+    '__vpxArchiveDirectories',
     '__checksumSources',
     '__tableManufacturer',
     // Override checkboxes are a builder-only convenience that unlocks a tab

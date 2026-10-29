@@ -105,6 +105,40 @@
 
     validateChecksum('vpxChecksum', 'vpx', 'VPX Checksum', { required: true });
 
+    // Table-archive mode. A bundled DMD asks for the same checksum pair below,
+    // in its own words, so the VPX tab's Archive Format only adds its own rule
+    // when no DMD is bundled.
+    const archiveFormat = hasText(values.vpxArchiveFormat);
+    const archiveFromDmd = values.specialDMDBundled === true;
+    if (archiveFormat && !archiveFromDmd && normalizeChecksumValue(values.vpxChecksum).length < 2) {
+      addError('vpx', 'Table archive needs both checksums',
+        'Drop the table archive on VPX Checksum: the list must carry the archive MD5 alongside the .vpx MD5.', 'vpxChecksum');
+    }
+    const extractFolders = normalizeArray(values.vpxExtractExtra);
+    if (extractFolders.length && !archiveFormat && !archiveFromDmd) {
+      addError('vpx', 'Archive Format required', 'Choose the table archive format: Extract Folders are unpacked from it.', 'vpxArchiveFormat');
+    }
+    const pathProblem = utils.installPathProblem || (() => '');
+    extractFolders.forEach(folder => {
+      const problem = pathProblem(folder);
+      if (problem) addError('vpx', 'Extract Folder invalid', `"${folder}" ${problem}. Use a plain path relative to the archive root.`, 'vpxExtractExtra');
+    });
+    (utils.parsePostInstallRename?.(values.postInstallRename) || []).forEach(entry => {
+      if (entry.invalid) {
+        addError('vpx', 'Post-Install Rename invalid', `Line ${entry.line} must read "source -> destination".`, 'postInstallRename');
+        return;
+      }
+      [entry.source, entry.destination].forEach(path => {
+        const problem = pathProblem(path);
+        if (problem) addError('vpx', 'Post-Install Rename invalid', `"${path}" ${problem}. Use a plain path relative to the table folder.`, 'postInstallRename');
+      });
+      // A folder picked from the archive arrives as "x -> x" until its
+      // destination is edited.
+      if (entry.source === entry.destination) {
+        addError('vpx', 'Post-Install Rename invalid', `"${entry.source}" is renamed to itself. Change its destination.`, 'postInstallRename');
+      }
+    });
+
     // Override counts as offered: its tab is open and the checksum dot used to
     // ask for it there with no dialog line or count (decision 5).
     const backglassOffered = Boolean(

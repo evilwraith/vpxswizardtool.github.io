@@ -10,21 +10,77 @@
     return String(value).replace(/"/g, "'").trim();
   }
 
+  // An entry's checksum is one MD5 or several; the dialog takes several as a
+  // comma- or space-separated list. One stays a plain string, two or more a
+  // list, the same [String|List] rule every top-level checksum follows.
+  function normalizeEntryChecksum(value) {
+    const hashes = (Array.isArray(value) ? value : String(value || '').split(/[\s,]+/))
+      .map(item => String(item ?? '').trim().toUpperCase())
+      .filter(Boolean);
+    return hashes.length > 1 ? hashes : (hashes[0] || '');
+  }
+
   function normalizeAdditionalRoms(value) {
     if (!Array.isArray(value)) return [];
     return value.map(entry => {
       if (!entry || typeof entry !== 'object') return null;
       const normalized = {
         vpsId: String(entry.vpsId || '').trim(),
-        checksum: String(entry.checksum || '').trim().toUpperCase(),
+        checksum: normalizeEntryChecksum(entry.checksum),
         versionOverride: String(entry.versionOverride || '').trim(),
-        urlOverride: String(entry.urlOverride || '').trim()
+        urlOverride: String(entry.urlOverride || '').trim(),
+        bundled: entry.bundled === true,
+        notes: String(entry.notes || '').trim()
       };
       // vpsId is legitimately empty when ROM Override is active (no VPS DB
-      // entry to pull one from — see additionalRomsController.js), so a
-      // real entry is one with EITHER a vpsId or a checksum, not vpsId alone.
-      return (normalized.vpsId || normalized.checksum) ? normalized : null;
+      // entry to pull one from — see additionalRomsController.js), and always
+      // empty for a URL or bundled entry, so any of these marks a real entry.
+      const real = normalized.vpsId || normalized.urlOverride || normalized.bundled
+        || (Array.isArray(normalized.checksum) ? normalized.checksum.length : normalized.checksum);
+      return real ? normalized : null;
     }).filter(Boolean);
+  }
+
+  // postInstallRename is edited as text, one "source -> destination" per line.
+  // Lines that do not split into two paths come back as { line, invalid: true }
+  // so validation can name them; the writer skips them.
+  function parsePostInstallRename(value) {
+    if (Array.isArray(value)) {
+      return value
+        .filter(entry => entry && typeof entry === 'object')
+        .map(entry => ({ source: String(entry.source || '').trim(), destination: String(entry.destination || '').trim() }));
+    }
+    return String(value || '').split('\n')
+      .map((text, index) => ({ text: text.trim(), line: index + 1 }))
+      .filter(({ text }) => text)
+      .map(({ text, line }) => {
+        const parts = text.split('->');
+        const source = (parts[0] || '').trim();
+        const destination = parts.slice(1).join('->').trim();
+        return parts.length === 2 && source && destination
+          ? { source, destination }
+          : { line, invalid: true };
+      });
+  }
+
+  function formatPostInstallRename(entries) {
+    return parsePostInstallRename(entries)
+      .filter(entry => !entry.invalid)
+      .map(entry => `${entry.source} -> ${entry.destination}`)
+      .join('\n');
+  }
+
+  // Install paths are exact and relative to the table root. Returns why a path
+  // is refused, or '' when it is fine.
+  function installPathProblem(path) {
+    const value = String(path || '');
+    if (!value.trim()) return 'is empty';
+    if (value.includes('\\')) return 'uses a backslash';
+    if (value.startsWith('/') || /^[A-Za-z]:/.test(value)) return 'is absolute';
+    if (value.endsWith('/')) return 'ends with /';
+    if (/[*?[\]{}]/.test(value)) return 'uses a glob';
+    if (value.split('/').some(segment => segment === '..' || segment === '.' || segment === '')) return 'has an empty, . or .. segment';
+    return '';
   }
 
   const CHECKSUM_KEYS = [
@@ -51,8 +107,11 @@
 
     // `enabled` is only written to YAML when the user opts in to "Disable for
     // Wizard" (enabled === false). Any other state is omitted from output.
+    // The builder edits fixes as one checkbox each; the YML carries the list.
+    const fixes = data.bass === true ? ['bass'] : [];
     delete data.bass;
-    delete data.applyFixes;
+    if (fixes.length) data.applyFixes = fixes;
+    else delete data.applyFixes;
 
     uppercaseChecksums(data);
 
@@ -92,12 +151,14 @@
       delete data.specialDMDNotes;
       delete data.specialDMDUrlOverride;
       delete data.specialDMDVersion;
-    } else {
-      // Bundled-shape only. Nothing in the builder edits this key, so the only
-      // way it can be here is an imported bundled YML that has since been
-      // switched to the standalone shape.
-      delete data.vpxArchiveFormat;
     }
+    // Otherwise vpxArchiveFormat is the VPX tab's own Archive Format: the
+    // table installs from its archive even with no DMD bundled into it.
+    if (!String(data.vpxArchiveFormat || '').trim()) delete data.vpxArchiveFormat;
+
+    const renames = parsePostInstallRename(data.postInstallRename).filter(entry => !entry.invalid);
+    if (renames.length) data.postInstallRename = renames;
+    else delete data.postInstallRename;
 
     // The table-level NSFW flag is exclusive: when set, per-asset NSFW keys
     // must never appear alongside it (covers imported YAML that has both).
@@ -133,7 +194,7 @@
     }
     delete data.coloredROMChecksumSecondary;
 
-    ['testers', 'backglassAuthorsOverride', 'diffAuthorsOverride', 'altSoundAuthorsOverride'].forEach(key => {
+    ['testers', 'backglassAuthorsOverride', 'diffAuthorsOverride', 'altSoundAuthorsOverride', 'vpxExtractExtra'].forEach(key => {
       const normalized = normalizeArray(data[key]);
       if (normalized.length) data[key] = normalized;
       else delete data[key];
@@ -228,9 +289,21 @@
     return `${indent}${name}: "${cleanValue}"\n`;
   }
 
+  const OBJECT_LIST_ORDER = {
+    additionalRoms: ['vpsId', 'checksum', 'versionOverride', 'urlOverride', 'bundled', 'notes'],
+    postInstallRename: ['source', 'destination']
+  };
+
+  // A list-valued property (a multi-checksum entry) nests its items one level
+  // deeper than the property itself.
+  function serializeProperty(key, value, indent) {
+    if (!Array.isArray(value)) return serializeScalar(key, value, indent);
+    return `${indent}${key}:\n${value.map(item => `${indent}  - "${cleanYamlString(item)}"\n`).join('')}`;
+  }
+
   function serializeObjectList(name, items) {
     let yaml = `${name}:\n`;
-    const propertyOrder = ['vpsId', 'checksum', 'versionOverride', 'urlOverride'];
+    const propertyOrder = OBJECT_LIST_ORDER[name] || [...new Set(items.flatMap(item => Object.keys(item)))];
 
     items.forEach(item => {
       const properties = propertyOrder
@@ -239,10 +312,10 @@
       if (!properties.length) return;
 
       const [firstName, firstValue] = properties.shift();
-      const firstLine = serializeScalar(firstName, firstValue, '  ').replace(/^  /, '  - ');
+      const firstLine = serializeProperty(firstName, firstValue, '  ').replace(/^  /, '  - ');
       yaml += firstLine;
       properties.forEach(([key, value]) => {
-        yaml += serializeScalar(key, value, '    ');
+        yaml += serializeProperty(key, value, '    ');
       });
     });
 
@@ -323,4 +396,8 @@
   utils.buildYaml = buildYaml;
   utils.highlightYaml = highlightYaml;
   utils.normalizeAdditionalRoms = normalizeAdditionalRoms;
+  utils.normalizeEntryChecksum = normalizeEntryChecksum;
+  utils.parsePostInstallRename = parsePostInstallRename;
+  utils.formatPostInstallRename = formatPostInstallRename;
+  utils.installPathProblem = installPathProblem;
 })();

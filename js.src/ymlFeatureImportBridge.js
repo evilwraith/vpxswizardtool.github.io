@@ -6,7 +6,18 @@
   if (!runtime || !fields) return;
 
   const MAX_WAIT_MS = 30000;
-  const SUPPORTED_KEYS = new Set(['vpsId', 'checksum', 'versionOverride', 'urlOverride']);
+  // The nested object lists the flat importer cannot read. Each is cut out of
+  // the file before the original importer runs and applied once it finishes.
+  const BLOCKS = {
+    additionalRoms: {
+      label: 'Additional ROM',
+      keys: new Set(['vpsId', 'checksum', 'versionOverride', 'urlOverride', 'bundled', 'notes'])
+    },
+    postInstallRename: {
+      label: 'Post-Install Rename',
+      keys: new Set(['source', 'destination'])
+    }
+  };
   let fileInput = null;
   let dropZone = null;
   let bypass = false;
@@ -49,42 +60,92 @@
     return value;
   }
 
-  function parseAdditionalRoms(lines) {
+  // One list of flat objects. A property may hold a nested list of scalars
+  // (a multi-checksum entry) or a folded/literal block (long notes), both
+  // indented deeper than the property itself.
+  function parseObjectList(lines, block) {
     const entries = [];
     let current = null;
+    let propertyIndent = -1;
+    let lastKey = '';
+    let pending = null; // { kind: 'list' } or { kind: 'block', literal, lines }
     let sawContent = false;
+
+    const finishPending = () => {
+      if (pending?.kind === 'block' && current) {
+        current[lastKey] = pending.literal ? pending.lines.join('\n') : pending.lines.join(' ');
+      }
+      pending = null;
+    };
+    const setProperty = (key, raw, offset) => {
+      if (!block.keys.has(key)) throw new Error(`Unsupported ${block.label} field “${key}” near line ${offset + 1}.`);
+      lastKey = key;
+      const value = stripInlineComment(String(raw || '').trim());
+      if (/^[>|][+-]?$/.test(value)) {
+        pending = { kind: 'block', literal: value.startsWith('|'), lines: [] };
+        current[key] = '';
+      } else if (!value) {
+        pending = { kind: 'list' };
+        current[key] = [];
+      } else {
+        current[key] = parseScalar(value);
+      }
+    };
 
     lines.forEach((line, offset) => {
       if (!line.trim() || /^\s*#/.test(line)) return;
       sawContent = true;
+      const indent = line.match(/^\s*/)[0].length;
 
-      const itemMatch = line.match(/^\s{2,}-\s+([A-Za-z_][A-Za-z0-9_-]*):\s*(.*)$/);
+      if (pending && current && indent > propertyIndent) {
+        if (pending.kind === 'block') {
+          pending.lines.push(line.trim());
+          return;
+        }
+        const nested = line.match(/^\s+-\s+(.*)$/);
+        if (nested) {
+          current[lastKey].push(parseScalar(nested[1]));
+          return;
+        }
+      }
+      finishPending();
+
+      const itemMatch = line.match(/^(\s{2,})-\s+([A-Za-z_][A-Za-z0-9_-]*):\s*(.*)$/);
       if (itemMatch) {
         if (current) entries.push(current);
         current = {};
-        const key = itemMatch[1];
-        if (!SUPPORTED_KEYS.has(key)) throw new Error(`Unsupported Additional ROM field “${key}” near line ${offset + 1}.`);
-        current[key] = parseScalar(itemMatch[2]);
+        propertyIndent = itemMatch[1].length + 2;
+        setProperty(itemMatch[2], itemMatch[3], offset);
         return;
       }
 
       const propertyMatch = line.match(/^\s{4,}([A-Za-z_][A-Za-z0-9_-]*):\s*(.*)$/);
       if (!propertyMatch || !current) {
-        throw new Error(`Could not parse the Additional ROM block near line ${offset + 1}.`);
+        throw new Error(`Could not parse the ${block.label} block near line ${offset + 1}.`);
       }
-      const key = propertyMatch[1];
-      if (!SUPPORTED_KEYS.has(key)) throw new Error(`Unsupported Additional ROM field “${key}” near line ${offset + 1}.`);
-      current[key] = parseScalar(propertyMatch[2]);
+      setProperty(propertyMatch[1], propertyMatch[2], offset);
     });
 
+    finishPending();
     if (current) entries.push(current);
-    if (sawContent && !entries.length) throw new Error('The Additional ROM block does not contain any valid ROM entries.');
-    return entries.map(entry => ({
-      vpsId: String(entry.vpsId || '').trim(),
-      checksum: String(entry.checksum || '').trim(),
-      versionOverride: String(entry.versionOverride || '').trim(),
-      urlOverride: String(entry.urlOverride || '').trim()
-    }));
+    if (sawContent && !entries.length) throw new Error(`The ${block.label} block does not contain any valid entries.`);
+    return entries;
+  }
+
+  const text = value => String(value ?? '').trim();
+
+  function normalizeAdditionalRomEntry(entry) {
+    const checksum = Array.isArray(entry.checksum) ? entry.checksum.map(text).filter(Boolean) : text(entry.checksum);
+    const normalized = {
+      vpsId: text(entry.vpsId),
+      // The dialog edits several checksums as one comma-separated field.
+      checksum: Array.isArray(checksum) ? checksum.join(', ') : checksum,
+      versionOverride: text(entry.versionOverride),
+      urlOverride: text(entry.urlOverride),
+      notes: text(entry.notes)
+    };
+    if (/^true$/i.test(text(entry.bundled))) normalized.bundled = true;
+    return normalized;
   }
 
   function extractTableId(text) {
@@ -92,20 +153,34 @@
     return match ? String(parseScalar(match[1])).trim() : '';
   }
 
-  function extractFeatureBlock(text) {
-    const normalized = String(text).replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
-    const lines = normalized.split('\n');
-    const start = lines.findIndex(line => /^additionalRoms:\s*(?:\[\s*\])?\s*(?:#.*)?$/.test(line));
-    if (start < 0) {
-      return { found: false, entries: [], strippedText: normalized, tableId: extractTableId(normalized) };
+  function extractFeatureBlock(source) {
+    let lines = String(source).replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n').split('\n');
+    const blocks = {};
+
+    Object.entries(BLOCKS).forEach(([name, block]) => {
+      const header = new RegExp(`^${name}:\\s*(?:\\[\\s*\\])?\\s*(?:#.*)?$`);
+      const start = lines.findIndex(line => header.test(line));
+      if (start < 0) return;
+      let end = start + 1;
+      while (end < lines.length && (!lines[end].trim() || /^\s/.test(lines[end]))) end += 1;
+      const inlineEmpty = new RegExp(`^${name}:\\s*\\[\\s*\\]`).test(lines[start]);
+      blocks[name] = inlineEmpty ? [] : parseObjectList(lines.slice(start + 1, end), block);
+      lines = [...lines.slice(0, start), ...lines.slice(end)];
+    });
+
+    if (blocks.additionalRoms) blocks.additionalRoms = blocks.additionalRoms.map(normalizeAdditionalRomEntry);
+    if (blocks.postInstallRename) {
+      blocks.postInstallRename = window.VPS_UTILS?.formatPostInstallRename?.(blocks.postInstallRename)
+        ?? blocks.postInstallRename.map(entry => `${text(entry.source)} -> ${text(entry.destination)}`).join('\n');
     }
 
-    let end = start + 1;
-    while (end < lines.length && (!lines[end].trim() || /^\s/.test(lines[end]))) end += 1;
-    const inlineEmpty = /^additionalRoms:\s*\[\s*\]/.test(lines[start]);
-    const entries = inlineEmpty ? [] : parseAdditionalRoms(lines.slice(start + 1, end));
-    const stripped = [...lines.slice(0, start), ...lines.slice(end)].join('\n');
-    return { found: true, entries, strippedText: stripped, tableId: extractTableId(stripped) };
+    const strippedText = lines.join('\n');
+    return { found: Object.keys(blocks).length > 0, blocks, strippedText, tableId: extractTableId(strippedText) };
+  }
+
+  function stepField(stepId, name) {
+    return fields.WIZARD_STEPS.find(step => step.id === stepId)?.fields
+      .find(field => field.yml_field === name) || { yml_field: name };
   }
 
   function transformedFile(source, text) {
@@ -180,7 +255,7 @@
       try {
         extracted = extractFeatureBlock(await source.text());
       } catch (error) {
-        console.warn('Additional ROM import preprocessing failed; using the original importer error path.', error);
+        console.warn('Nested block import preprocessing failed; using the original importer error path.', error);
         dispatchToOriginal(source);
         return;
       }
@@ -195,8 +270,21 @@
         return;
       }
 
-      runtime.state.callbacks.onChange('additionalRoms', extracted.entries, additionalRomsDefinition());
-      window.VPS_ADDITIONAL_ROMS?.render?.();
+      const { additionalRoms, postInstallRename } = extracted.blocks;
+      if (additionalRoms) {
+        runtime.state.callbacks.onChange('additionalRoms', additionalRoms, additionalRomsDefinition());
+        window.VPS_ADDITIONAL_ROMS?.render?.();
+      }
+      if (postInstallRename !== undefined) {
+        runtime.state.callbacks.onChange('postInstallRename', postInstallRename, stepField('vpx', 'postInstallRename'));
+        // A field change does not re-render the tab, so an open VPX tab would
+        // keep showing the empty box it was drawn with.
+        const control = document.getElementById('field-postInstallRename');
+        if (control) {
+          control.value = postInstallRename;
+          control.closest('details')?.setAttribute('open', '');
+        }
+      }
       window.VPS_PRODUCTION_UI_EXTENSIONS?.scheduleControlCorrections?.();
     } finally {
       processing = false;

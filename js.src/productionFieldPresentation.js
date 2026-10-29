@@ -129,18 +129,23 @@
 
   function decorateAdditionalRomIndicator() {
     const entries = window.VPS_ADDITIONAL_ROMS?.entries?.() || [];
-    const indicator = document.querySelector('.additional-rom-indicator');
-    const entry = entries[0];
-    if (!indicator || !entry) return;
+    // Scoped to the ROM tab: the VPX tab's password indicator shares the class.
+    const indicators = document.querySelectorAll('#config-panel-rom .additional-rom-indicator');
+    if (!indicators.length || !entries.length) return;
 
     const items = assetItems('romFiles');
-    const item = items.find(candidate => optionId(candidate) === String(entry.vpsId || ''));
-    const name = additionalRomName(item, entry, 0);
-    const detail = String(entry.checksum || '').trim() || 'Checksum missing';
-    const tooltip = `${name} · ${detail}`;
-    if (indicator.dataset.tooltip !== tooltip) indicator.dataset.tooltip = tooltip;
-    const label = `Additional ROM: ${name}. Activate to edit.`;
-    if (indicator.getAttribute('aria-label') !== label) indicator.setAttribute('aria-label', label);
+    indicators.forEach((indicator, index) => {
+      const entry = entries[index];
+      if (!entry) return;
+      const item = items.find(candidate => optionId(candidate) === String(entry.vpsId || ''));
+      const name = entry.bundled === true && !entry.vpsId ? 'Bundled ROM' : additionalRomName(item, entry, index);
+      const checksum = Array.isArray(entry.checksum) ? entry.checksum.join(', ') : entry.checksum;
+      const detail = String(checksum || '').trim() || 'Checksum missing';
+      const tooltip = `${name} · ${detail}`;
+      if (indicator.dataset.tooltip !== tooltip) indicator.dataset.tooltip = tooltip;
+      const label = `Additional ROM ${index + 1}: ${name}. Activate to edit.`;
+      if (indicator.getAttribute('aria-label') !== label) indicator.setAttribute('aria-label', label);
+    });
   }
 
   function applyPresentation() {
