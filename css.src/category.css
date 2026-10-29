@@ -982,6 +982,13 @@ input[type="checkbox"]:disabled { opacity: 0.45; cursor: not-allowed; }
 .archive-directory-more:hover,
 .archive-directory-more.is-active { background: var(--accent-soft); }
 .archive-directory-option.is-selected { color: var(--accent); font-weight: 600; }
+/* Multi-select rows (Archive & Install) reserve a tick column. */
+.archive-directory-option.is-multiple::before {
+  content: "";
+  display: inline-block;
+  width: 1.5em;
+}
+.archive-directory-option.is-multiple.is-selected::before { content: "\2713"; }
 /* Sticky so LOAD MORE stays reachable without scrolling to the bottom. */
 .archive-directory-more {
   position: sticky;

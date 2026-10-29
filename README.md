@@ -179,6 +179,8 @@ Files are processed by the browser and are not uploaded by this application.
 - VPU Patch values use `diffVPSId`, `diffChecksum`, `diffUrlOverride`, and `diffVersionOverride`.
 - Alt Sound output supports `altSoundVPSId`, `altSoundBundled`, `altSoundChecksum`, `altSoundUrlOverride`, `altSoundVersionOverride`, `altSoundArchiveFormat`, `altSoundArchiveRoot`, `altSoundAuthorsOverride`, and `altSoundNotes` when applicable.
 - PUP Pack output supports `pupVPSId`, `pupBundled`, `pupChecksum`, `pupFileUrl`, `pupVersion`, `pupArchiveFormat`, `pupArchiveRoot`, `pupRequired`, and `pupNotes` when applicable.
+- The VPX tab's **Archive & Install** section writes `vpxArchiveFormat` (table-archive mode, which needs the archive and `.vpx` MD5s in `vpxChecksum`), `vpxExtractExtra`, `postInstallRename` (entered as one `source -> destination` per line), and `applyFixes: [bass]`. Dropping the table archive on VPX Checksum loads its folders into multi-select browsers under Extract Folders and Post-Install Renames. A picked rename starts as `folder -> folder` and is flagged until its destination is changed.
+- Additional ROM entries support `vpsId`, `urlOverride` or `bundled` as their source, plus `checksum` (one or a list), `versionOverride`, and `notes`.
 
 ## Keyboard shortcuts
 

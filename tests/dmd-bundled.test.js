@@ -7,10 +7,12 @@
 // What it pins:
 //   - vpxChecksum knows where to send the archive's format, folder list and
 //     hash when a DMD is bundled into the same file
-//   - vpxArchiveFormat is DERIVED from specialDMDArchiveFormat at write time,
-//     never edited, and never written outside the bundled shape
-//   - the importer recognises that derived key, so a bundled YML does not come
-//     back reporting it as outdated
+//   - bundled, vpxArchiveFormat is DERIVED from specialDMDArchiveFormat at
+//     write time; the VPX tab's own Archive Format is locked and shows it
+//   - outside the bundled shape vpxArchiveFormat is the VPX tab's own value
+//     (table-archive mode, table.yml.example), written only when set
+//   - the importer recognises the key, so a bundled YML does not come back
+//     reporting it as outdated, and restores the DMD format from it
 //   - both the build and the field rules demand the checksum PAIR
 //
 // NOT covered here: the drop handler itself. Hashing an archive twice and
@@ -72,11 +74,17 @@ const pairing = vpxChecksum.bundledPairing;
     'browsing is switched on only by the pairing, so a normal drop is unchanged');
 }
 
-// 2 ── vpxArchiveFormat is derived, not edited
+// 2 ── bundled, vpxArchiveFormat is derived, not edited
+// The VPX tab has its own Archive Format for table-archive mode (no DMD). While
+// a DMD is bundled the DMD tab answers the format, so the VPX control is locked
+// and only shows that answer - it never asks the same question twice.
 {
-  const declared = WIZARD_STEPS.flatMap(step => (step.fields || []).map(f => f.yml_field));
-  check('no field edits vpxArchiveFormat', !declared.includes('vpxArchiveFormat'),
-    'it is mirrored from the DMD tab, so a second control would ask the same question twice');
+  const format = vpx.fields.find(field => field.yml_field === 'vpxArchiveFormat');
+  check('the VPX tab declares Archive Format', Boolean(format));
+  check('it is locked while a DMD is bundled', format?.disabledWhen === 'specialDMDBundled');
+  check('it shows the DMD format then', format?.mirrorFrom?.when === 'specialDMDBundled'
+    && format?.mirrorFrom?.field === 'specialDMDArchiveFormat' && format?.mirrorFrom?.index === undefined);
+  check('no DMD field writes vpxArchiveFormat', !dmd.fields.some(field => field.yml_field === 'vpxArchiveFormat'));
 }
 
 // ── the real bundled-shape block out of prepareData ────────────────────────
@@ -86,7 +94,7 @@ const pairing = vpxChecksum.bundledPairing;
 const yamlSource = fs.readFileSync(YAML, 'utf8').split('\r\n').join('\n');
 const start = yamlSource.indexOf('    if (data.specialDMDBundled === true) {');
 if (start < 0) throw new Error('bundled-shape block not found');
-const endMarker = '      delete data.vpxArchiveFormat;\n    }';
+const endMarker = "    if (!String(data.vpxArchiveFormat || '').trim()) delete data.vpxArchiveFormat;";
 const end = yamlSource.indexOf(endMarker, start);
 if (end < 0) throw new Error('bundled-shape block end not found');
 const block = yamlSource.slice(start, end + endMarker.length);
@@ -110,14 +118,17 @@ const applyBundledShape = new Function('data', block + '\n return data;');
 
   const standalone = applyBundledShape({
     specialDMDBundled: false,
-    specialDMDArchiveFormat: 'zip',
-    vpxArchiveFormat: 'zip'
+    specialDMDArchiveFormat: 'zip'
   });
-  check('a standalone build writes NO vpxArchiveFormat',
+  check('a standalone DMD writes NO vpxArchiveFormat of its own',
     !('vpxArchiveFormat' in standalone), String(standalone.vpxArchiveFormat));
-  check('an imported bundled value is dropped when the shape is switched away',
-    !('vpxArchiveFormat' in standalone),
-    'the only way that key reaches state is an import');
+
+  // Table-archive mode: the VPX tab's Archive Format, no DMD bundled.
+  const tableArchive = applyBundledShape({ specialDMDBundled: false, vpxArchiveFormat: 'rar' });
+  check('the VPX tab\'s own Archive Format is written outside the bundled shape',
+    tableArchive.vpxArchiveFormat === 'rar', String(tableArchive.vpxArchiveFormat));
+  const blank = applyBundledShape({ vpxArchiveFormat: '' });
+  check('a blank VPX Archive Format writes nothing', !('vpxArchiveFormat' in blank));
 
   const noFormat = applyBundledShape({ specialDMDBundled: true });
   check('no DMD format means no mirrored key at all',
@@ -140,12 +151,17 @@ const applyBundledShape = new Function('data', block + '\n return data;');
     'the archive hash goes into the vpxChecksum list instead');
 }
 
-// 5 ── the importer knows the derived key
+// 5 ── the importer knows the key
+// It is a VPX field now, so allSupportedKeys picks it up like any other; the
+// DMD's own format is never written when bundled, so it is read back from it.
 {
   const importSource = fs.readFileSync(IMPORT, 'utf8');
-  check('vpxArchiveFormat is seeded into the supported keys',
-    /new Set\(\[[^\]]*'vpxArchiveFormat'/.test(importSource),
+  check('vpxArchiveFormat is a declared field, so import supports it',
+    vpx.fields.some(field => field.yml_field === 'vpxArchiveFormat'),
     'otherwise a bundled YML imports with it flagged outdated and stripped');
+  check('a bundled import restores the DMD format from vpxArchiveFormat',
+    importSource.includes('values.specialDMDArchiveFormat = values.vpxArchiveFormat;'),
+    'without it a re-imported bundled DMD reports DMD Archive Format required');
 }
 
 // 6 ── both rule sections demand the pair

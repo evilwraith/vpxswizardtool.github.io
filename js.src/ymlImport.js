@@ -212,11 +212,9 @@
   }
 
   function allSupportedKeys() {
-    // vpxArchiveFormat is DERIVED, not edited: prepareData mirrors it from
-    // specialDMDArchiveFormat when a DMD is bundled. It belongs to no field, so
-    // without seeding it here a bundled YML would import with it reported as an
-    // outdated key and stripped.
-    const keys = new Set(['tableVPSId', 'enabled', 'nsfw', 'vpxArchiveFormat']);
+    // applyFixes belongs to no field: the builder edits one checkbox per fix
+    // (bass), and normalizeImportedData maps the list back onto them.
+    const keys = new Set(['tableVPSId', 'enabled', 'nsfw', 'applyFixes']);
     WIZARD_STEPS.forEach(step => {
       (step.fields || []).forEach(field => {
         keys.add(field.yml_field);
@@ -252,9 +250,22 @@
       values[key] = value;
     });
 
-    ['testers', 'backglassAuthorsOverride'].forEach(key => {
+    ['testers', 'backglassAuthorsOverride', 'vpxExtractExtra'].forEach(key => {
       if (Array.isArray(values[key])) values[key] = values[key].map(String).join(', ');
     });
+
+    if (values.applyFixes !== undefined) {
+      const fixes = (Array.isArray(values.applyFixes) ? values.applyFixes : [values.applyFixes]).map(String);
+      if (fixes.includes('bass')) values.bass = true;
+      delete values.applyFixes;
+    }
+
+    // Bundled, the DMD's archive format is written only as vpxArchiveFormat
+    // (see prepareData), so it has to be read back from there.
+    if (values.specialDMDBundled === true && !valuePresent(values.specialDMDArchiveFormat)
+      && valuePresent(values.vpxArchiveFormat)) {
+      values.specialDMDArchiveFormat = values.vpxArchiveFormat;
+    }
 
     if (Array.isArray(values.coloredROMChecksum)) {
       const checksums = values.coloredROMChecksum.map(value => String(value ?? '').trim()).filter(Boolean);

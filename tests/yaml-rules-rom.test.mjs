@@ -441,9 +441,11 @@ await scenario('Additional ROM checksum not an MD5', imported([{ vpsId: 'WshhKlR
   ],
   download: 'blocked'
 });
-await scenario('Additional ROM URL without a version', imported([{ vpsId: 'WshhKlRf', checksum: MD5_ADD, urlOverride: ROM_URL }]), {
+// A URL entry stands in for the VPS ID (vpsId XOR urlOverride), so this one
+// carries no VPS ID: the version is the only thing missing.
+await scenario('Additional ROM URL without a version', imported([{ checksum: MD5_ADD, urlOverride: ROM_URL }]), {
   rule: 'Additional ROM 1 needs attention',
-  keys: ['additionalRoms', 'vpsId', 'checksum', 'urlOverride', 'fps', 'romChecksum', 'romVPSId', 'tableVPSId', 'testers', 'vpxChecksum', 'vpxVPSId'],
+  keys: ['additionalRoms', 'checksum', 'urlOverride', 'fps', 'romChecksum', 'romVPSId', 'tableVPSId', 'testers', 'vpxChecksum', 'vpxVPSId'],
   dialog: [
     'error: Additional ROM 1 needs attention | Version Override is required when URL Override is used.'
   ],
@@ -453,15 +455,49 @@ await scenario('Additional ROM URL without a version', imported([{ vpsId: 'WshhK
   ],
   download: 'blocked'
 });
-await scenario('Additional ROM version without a URL', imported([{ vpsId: 'WshhKlRf', checksum: MD5_ADD, versionOverride: 'tftc_303' }]), {
-  rule: 'Additional ROM 1 needs attention',
+// table.yml.example: versionOverride is optional beside a vpsId and only
+// required beside a urlOverride. Until 2026-10-27 this was an error.
+await scenario('Additional ROM version beside a VPS ID', imported([{ vpsId: 'WshhKlRf', checksum: MD5_ADD, versionOverride: 'tftc_303' }]), {
   keys: ['additionalRoms', 'vpsId', 'checksum', 'versionOverride', 'fps', 'romChecksum', 'romVPSId', 'tableVPSId', 'testers', 'vpxChecksum', 'vpxVPSId'],
   dialog: [
-    'error: Additional ROM 1 needs attention | URL Override is required when Version Override is used.'
+    'success: Everything looks good. | The build is ready to copy or download.'
+  ],
+  tabs: ['main: ready', 'vpx: ready', 'b2s: disabled', 'rom: ready', 'coloredRom: disabled', 'pup: disabled', 'altSound: disabled', 'vpuPatch: disabled', 'dmd: disabled'],
+  dots: [],
+  download: 'fXaQ33KC_table-config.yml',
+  downloadMatchesPreview: true
+});
+await scenario('Additional ROM with a VPS ID and a URL', imported([{ vpsId: 'WshhKlRf', checksum: MD5_ADD, versionOverride: 'tftc_303', urlOverride: ROM_URL }]), {
+  rule: 'Additional ROM 1 needs attention',
+  keys: ['additionalRoms', 'vpsId', 'checksum', 'versionOverride', 'urlOverride', 'fps', 'romChecksum', 'romVPSId', 'tableVPSId', 'testers', 'vpxChecksum', 'vpxVPSId'],
+  dialog: [
+    'error: Additional ROM 1 needs attention | Use either a VPS ID or a URL Override, not both.'
   ],
   tabs: ['main: ready', 'vpx: ready', 'b2s: disabled', 'rom: 1 error', 'coloredRom: disabled', 'pup: disabled', 'altSound: disabled', 'vpuPatch: disabled', 'dmd: disabled'],
   dots: [
-    'rom additionalRoms: Additional ROM 1 needs attention. URL Override is required when Version Override is used.'
+    'rom additionalRoms: Additional ROM 1 needs attention. Use either a VPS ID or a URL Override, not both.'
+  ],
+  download: 'blocked'
+});
+await scenario('bundled Additional ROM', imported([{ checksum: MD5_ADD, bundled: 'true', notes: 'In the table zip' }]), {
+  keys: ['additionalRoms', 'checksum', 'bundled', 'notes', 'fps', 'romChecksum', 'romVPSId', 'tableVPSId', 'testers', 'vpxChecksum', 'vpxVPSId'],
+  dialog: [
+    'success: Everything looks good. | The build is ready to copy or download.'
+  ],
+  tabs: ['main: ready', 'vpx: ready', 'b2s: disabled', 'rom: ready', 'coloredRom: disabled', 'pup: disabled', 'altSound: disabled', 'vpuPatch: disabled', 'dmd: disabled'],
+  dots: [],
+  download: 'fXaQ33KC_table-config.yml',
+  downloadMatchesPreview: true
+});
+await scenario('bundled Additional ROM without notes', imported([{ checksum: MD5_ADD, bundled: 'true' }]), {
+  rule: 'Additional ROM 1 needs attention',
+  keys: ['additionalRoms', 'checksum', 'bundled', 'fps', 'romChecksum', 'romVPSId', 'tableVPSId', 'testers', 'vpxChecksum', 'vpxVPSId'],
+  dialog: [
+    'error: Additional ROM 1 needs attention | Notes are required for a bundled ROM: say where it is in the download.'
+  ],
+  tabs: ['main: ready', 'vpx: ready', 'b2s: disabled', 'rom: 1 error', 'coloredRom: disabled', 'pup: disabled', 'altSound: disabled', 'vpuPatch: disabled', 'dmd: disabled'],
+  dots: [
+    'rom additionalRoms: Additional ROM 1 needs attention. Notes are required for a bundled ROM: say where it is in the download.'
   ],
   download: 'blocked'
 });

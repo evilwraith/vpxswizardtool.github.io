@@ -715,9 +715,11 @@
     return true;
   }
 
-  // config: { id, ariaLabel, emptyText, onSelect, getValue }
+  // config: { id, ariaLabel, emptyText, onSelect, getValue, multiple }
+  // With `multiple`, getValue returns every chosen directory and choosing a row
+  // toggles it, leaving the panel open for the next one.
   function createDirectoryPicker(config) {
-    const { id, ariaLabel, emptyText, onSelect, getValue } = config || {};
+    const { id, ariaLabel, emptyText, onSelect, getValue, multiple } = config || {};
     const panelId = `${id}-panel`;
 
     const wrapper = element('div', 'archive-directory-picker');
@@ -738,6 +740,7 @@
     panel.id = panelId;
     panel.setAttribute('role', 'listbox');
     if (ariaLabel) panel.setAttribute('aria-label', ariaLabel);
+    if (multiple) panel.setAttribute('aria-multiselectable', 'true');
     panel.hidden = true;
 
     wrapper.append(trigger, panel);
@@ -746,6 +749,12 @@
 
     function currentValue() {
       return typeof getValue === 'function' ? String(getValue() || '') : '';
+    }
+
+    function isChosen(directory) {
+      if (!multiple) return directory === currentValue();
+      const chosen = typeof getValue === 'function' ? getValue() : [];
+      return Array.isArray(chosen) && chosen.includes(directory);
     }
 
     function visibleDirectories() {
@@ -762,11 +771,13 @@
 
     function syncTrigger() {
       const hidden = hiddenCount();
+      const chosenCount = multiple ? state.all.filter(isChosen).length : 0;
       triggerText.textContent = !state.all.length
         ? (emptyText || 'Drop an archive to browse directories')
         : (hidden > 0
           ? `Showing ${state.all.length - hidden} of ${state.all.length} archive directories…`
-          : `Choose from ${state.all.length} archive director${state.all.length === 1 ? 'y' : 'ies'}…`);
+          : `Choose from ${state.all.length} archive director${state.all.length === 1 ? 'y' : 'ies'}…`)
+          + (chosenCount ? ` (${chosenCount} selected)` : '');
       trigger.disabled = state.all.length === 0;
     }
 
@@ -806,7 +817,6 @@
 
     function renderRows() {
       const directories = visibleDirectories();
-      const selected = currentValue();
       panel.replaceChildren();
       state.rows = [];
 
@@ -815,9 +825,10 @@
         row.type = 'button';
         row.setAttribute('role', 'option');
         row.dataset.value = directory;
-        const isSelected = directory === selected;
+        const isSelected = isChosen(directory);
         row.setAttribute('aria-selected', isSelected ? 'true' : 'false');
         if (isSelected) row.classList.add('is-selected');
+        if (multiple) row.classList.add('is-multiple');
         // mousedown rather than click, matching renderSuggestions: preventing
         // the default keeps focus on the trigger, so the panel is never torn
         // down underneath a click that is still in flight.
@@ -873,8 +884,7 @@
       trigger.setAttribute('aria-expanded', 'true');
       renderRows();
       positionPanel();
-      const selected = currentValue();
-      const index = state.rows.findIndex(row => row.dataset.value === selected);
+      const index = state.rows.findIndex(row => row.dataset.value && isChosen(row.dataset.value));
       setActive(index >= 0 ? index : 0);
       window.addEventListener('scroll', positionPanel, true);
       window.addEventListener('resize', positionPanel);
@@ -899,6 +909,16 @@
     }
 
     function choose(directory) {
+      if (multiple) {
+        // Toggle in place: rebuild the rows so the tick follows, and keep the
+        // highlight on the row just toggled.
+        if (typeof onSelect === 'function') onSelect(directory);
+        renderRows();
+        const index = state.rows.findIndex(row => row.dataset.value === directory);
+        setActive(index >= 0 ? index : 0);
+        syncTrigger();
+        return;
+      }
       close({ silent: true });
       if (typeof onSelect === 'function') onSelect(directory);
       syncTrigger();
@@ -988,7 +1008,7 @@
       syncTrigger();
     }
 
-    const controller = { element: wrapper, trigger, setDirectories, close };
+    const controller = { element: wrapper, trigger, setDirectories, close, refresh: syncTrigger };
     // Reached by id at call time rather than held as a reference: in this
     // codebase any node that outlives a synchronous block may already be
     // detached. See "Hold selectors, not nodes" in VPXS UI Gotchas.
@@ -1527,6 +1547,7 @@
     // two rows (72px) to match PUP Notes, rather than the three-row default
     // every other multiline field falls through to.
     if (stepId === 'dmd' && name === 'specialDMDNotes') return ' field-wide field-textarea-two';
+    if (field.type === 'bool' && field.group) return ' field-checkbox-plain';
     if (field.readonly) return ' field-compact-id field-id-standard';
     if (/Checksum/i.test(field.name)) return ' field-checksum field-checksum-standard';
     if (field.multiline) return ' field-wide field-textarea-three';
@@ -1545,6 +1566,12 @@
     return false;
   }
 
+  function scalarIsSet(value) {
+    if (Array.isArray(value)) return value.some(item => String(item ?? '').trim() !== '');
+    if (typeof value === 'string') return value.trim() !== '';
+    return value === true;
+  }
+
   // Each tab keeps its OWN loaded directory list. The key is derived from the
   // step id, which already matches the two that existed before this was
   // generalised: pup -> __pupArchiveDirectories, altSound ->
@@ -1554,6 +1581,62 @@
     return `__${stepId}ArchiveDirectories`;
   }
 
+  // The table archive's folders, for the Archive & Install pickers. A bundled
+  // DMD's drop files them under the DMD tab, since the archive is the same one.
+  function installDirectoriesKey(values) {
+    return values.specialDMDBundled === true ? '__dmdArchiveDirectories' : '__vpxArchiveDirectories';
+  }
+
+  function splitList(text) {
+    return String(text || '').split(',').map(item => item.trim()).filter(Boolean);
+  }
+
+  function renameLines(text) {
+    return String(text || '').split('\n').map(line => line.trim()).filter(Boolean);
+  }
+
+  function renameSource(line) {
+    return line.includes('->') ? line.split('->')[0].trim() : line;
+  }
+
+  // Multi-select over the table archive's folders. installPicker 'list' toggles
+  // a folder in a comma-separated list; 'rename' toggles a
+  // "folder -> folder" line, whose destination the user then edits.
+  function createInstallPicker(field, values, onChange, input, controlId) {
+    const rename = field.installPicker === 'rename';
+    const directories = values[installDirectoriesKey(values)];
+    const hasFormat = values.specialDMDBundled === true || String(values.vpxArchiveFormat || '').trim();
+    const picker = createDirectoryPicker({
+      id: `${controlId}-directory-select`,
+      multiple: true,
+      ariaLabel: `Choose ${field.name} from the table archive's directories`,
+      emptyText: hasFormat
+        ? 'Drop the table archive on VPX Checksum to browse directories'
+        : 'Choose an Archive Format, then drop the table archive on VPX Checksum',
+      getValue: () => (rename ? renameLines(input.value).map(renameSource) : splitList(input.value)),
+      onSelect: directory => {
+        let next;
+        if (rename) {
+          const lines = renameLines(input.value);
+          const kept = lines.filter(line => renameSource(line) !== directory);
+          next = (kept.length === lines.length ? [...lines, `${directory} -> ${directory}`] : kept).join('\n');
+        } else {
+          const items = splitList(input.value);
+          next = (items.includes(directory)
+            ? items.filter(item => item !== directory)
+            : [...items, directory]).join(', ');
+        }
+        input.value = next;
+        onChange(field.yml_field, next, field);
+      }
+    });
+    picker.trigger.dataset.directoriesKey = installDirectoriesKey(values);
+    picker.setDirectories(Array.isArray(directories) ? directories : []);
+    // Typing in the field changes what is ticked, so the count follows it.
+    input.addEventListener('input', () => picker.refresh());
+    return picker.element;
+  }
+
   function createFieldControl(field, values, onChange, stepId) {
     const wrapper = element('div', `field${getFieldLayoutClass(stepId, field)}`);
     // A mirrored field displays another field's value and stores nothing of
@@ -1561,8 +1644,11 @@
     const mirror = field.mirrorFrom && values[field.mirrorFrom.when] === true
       ? values[field.mirrorFrom.field]
       : undefined;
+    // With an index it views one entry of a list; without one, a plain value.
     const value = mirror !== undefined
-      ? (Array.isArray(mirror) ? (mirror[field.mirrorFrom.index] ?? '') : '')
+      ? (field.mirrorFrom.index === undefined
+        ? mirror
+        : (Array.isArray(mirror) ? (mirror[field.mirrorFrom.index] ?? '') : ''))
       : (values[field.yml_field] ?? '');
     const controlId = `field-${field.yml_field}`;
 
@@ -1711,6 +1797,11 @@
       onChange(field.yml_field, nextValue, field);
     });
 
+    if (field.installPicker) {
+      wrapper.append(input, createInstallPicker(field, values, onChange, input, controlId));
+      return wrapper;
+    }
+
     if (field.directoryPicker) {
       const directoriesKey = archiveDirectoriesKey(stepId);
       const directories = Array.isArray(values[directoriesKey]) ? values[directoriesKey] : [];
@@ -1843,11 +1934,17 @@
         // One archive holding both the VPX and its DMD. Everything below is
         // gated on this being non-null, so a normal drop takes the same path it
         // always has.
-        const pairing = field.bundledPairing
-          && values[field.bundledPairing.when] === true
-          && ARCHIVE_EXTENSIONS.includes(extension)
-          ? field.bundledPairing
+        // Table-archive mode (an Archive Format chosen, no bundled DMD) wants
+        // the same pair, but crosses nothing over to another tab.
+        const archivePairing = field.archivePairing
+          && String(values[field.archivePairing.whenValue] || '').trim()
+          ? field.archivePairing
           : null;
+        const pairing = !ARCHIVE_EXTENSIONS.includes(extension)
+          ? null
+          : field.bundledPairing && values[field.bundledPairing.when] === true
+            ? field.bundledPairing
+            : archivePairing;
 
         const scanExtension = getArchiveScanExtension(field, values);
         // Only a manufacturer-driven scan is allowed to fall back. A table
@@ -1923,7 +2020,9 @@
             // Nothing is written to the DMD checksum: it mirrors this list's
             // second entry, so it follows automatically - including when the
             // user edits the additional checksum by hand later.
-            const pairedInput = document.getElementById(`field-${pairing.checksumField}`);
+            const pairedInput = pairing.checksumField
+              ? document.getElementById(`field-${pairing.checksumField}`)
+              : null;
             if (pairedInput) pairedInput.value = pairedHash.toUpperCase();
             messages.push('archive MD5 paired');
           } else {
@@ -1959,6 +2058,11 @@
             if (rootField) {
               getDirectoryPicker(`field-${rootField}-directory-select`)
                 ?.setDirectories(directories, { collapse: true });
+            }
+            // The Archive & Install pickers read the same list.
+            if (pairing) {
+              document.querySelectorAll(`[data-directories-key="${pairing.directoriesKey}"]`)
+                .forEach(trigger => trigger.__vpsDirectoryPicker?.setDirectories(directories, { collapse: true }));
             }
             messages.push(directories.length
               ? `${directories.length} director${directories.length === 1 ? 'y' : 'ies'} loaded`
@@ -2075,8 +2179,9 @@
     panel.setAttribute('role', 'tabpanel');
     panel.setAttribute('aria-labelledby', `config-tab-${step.id}`);
 
-    const commonFields = step.fields.filter(field => !field.advanced);
-    const advancedFields = step.fields.filter(field => field.advanced);
+    const commonFields = step.fields.filter(field => !field.advanced && !field.group);
+    const advancedFields = step.fields.filter(field => field.advanced && !field.group);
+    const installFields = step.fields.filter(field => field.group === 'install');
     const grid = element('div', `field-grid field-grid-${step.id}`);
     appendFields(grid, commonFields, values, callbacks.onChange, step.id);
     panel.appendChild(grid);
@@ -2094,6 +2199,24 @@
       appendFields(advancedGrid, advancedFields, values, callbacks.onChange, step.id);
       advanced.appendChild(advancedGrid);
       panel.appendChild(advanced);
+    }
+
+    // Its own section rather than more Advanced Config rows: controllers find
+    // a tab's Advanced Config with querySelector('.compact-advanced') and own
+    // its header, so this one comes after it and carries no header controls.
+    if (installFields.length) {
+      const install = element('details', 'advanced-fields compact-advanced install-fields');
+      install.open = installFields.some(field => scalarIsSet(values[field.yml_field]));
+      const installSummary = document.createElement('summary');
+      installSummary.append(
+        element('span', 'advanced-chevron', '›'),
+        element('span', 'advanced-label', 'Archive & Install')
+      );
+      install.appendChild(installSummary);
+      const installGrid = element('div', `field-grid advanced-grid install-grid-${step.id}`);
+      appendFields(installGrid, installFields, values, callbacks.onChange, step.id);
+      install.appendChild(installGrid);
+      panel.appendChild(install);
     }
 
     const actions = element('div', 'section-actions');
